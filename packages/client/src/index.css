@@ -435,6 +435,14 @@ body::after {
   transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+.progress-label--item { color: var(--amber-dim); }
+.progress-bar--item   { height: 4px; background: var(--border-dim); overflow: hidden; }
+.progress-fill--item  {
+  height: 100%;
+  background: var(--amber-dim);
+  box-shadow: 0 0 5px var(--amber-dim);
+}
+
 .activity-meta {
   display: flex; gap: 14px; flex-wrap: wrap;
   font-size: 10px; color: var(--text-dim); margin-top: 10px;
