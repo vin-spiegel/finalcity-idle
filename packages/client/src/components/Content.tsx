@@ -1,15 +1,32 @@
 import { useEffect, useRef, useState } from "react";
+import type { LogEntry } from "../types/log";
 
-type LogSegment =
-  | { type: "plain"; text: string }
-  | { type: "highlight"; text: string }
-  | { type: "reward"; text: string }
-  | { type: "danger"; text: string }
-  | { type: "good"; text: string };
+type Zone = {
+  id: string;
+  name: string;
+  location: string;
+  lv: number;
+  tickSec: number;
+  danger: "안전" | "보통" | "위험" | "극한";
+  art: string;
+};
 
-type LogEntry = { time: string; segments: LogSegment[] };
+const ZONES: Zone[] = [
+  { id: "ruin-commercial", name: "상업 구획 폐건물",  location: "키르타스 평원",  lv: 1,  tickSec: 12, danger: "안전", art: "░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░" },
+  { id: "ruin-factory",    name: "구 제조 공장 지하", location: "키르타스 평원",  lv: 5,  tickSec: 18, danger: "보통", art: "▒░▒▓▒░▒\n░▓████▓░\n▓██▓███▓\n░▓████▓░\n▒░▒▓▒░▒" },
+  { id: "mana-rift",       name: "마나 균열 지대",    location: "붉은 협곡",      lv: 12, tickSec: 25, danger: "위험", art: "░▒░▓░▒░\n▒▓▒█▒▓▒\n▓█▓▓▓█▓\n▒▓▒█▒▓▒\n░▒░▓░▒░" },
+  { id: "ancient-lab",     name: "고대 연구소 잔해",  location: "회색 고원",      lv: 20, tickSec: 35, danger: "위험", art: "▓▒░▒░▒▓\n▒▓▒▓▒▓▒\n░▒▓███▒░\n▒▓▒▓▒▓▒\n▓▒░▒░▒▓" },
+  { id: "void-sector",     name: "공허 구역 심층부",  location: "파이널 시티 외곽", lv: 30, tickSec: 50, danger: "극한", art: "█▓▒░▒▓█\n▓█▓▒▓█▓\n▒▓█▓█▓▒\n▓█▓▒▓█▓\n█▓▒░▒▓█" },
+];
 
-const ITEM_TICK_MS   = 12_000;
+const DANGER_CLASS: Record<Zone["danger"], string> = {
+  "안전": "danger--safe",
+  "보통": "danger--normal",
+  "위험": "danger--danger",
+  "극한": "danger--extreme",
+};
+
+const ITEM_TICK_MS      = 12_000;
 const PROGRESS_PER_ITEM = 1.5;
 
 const LOOT_POOL: LogEntry[] = [
@@ -23,13 +40,7 @@ const LOOT_POOL: LogEntry[] = [
   { time: "", segments: [{ type: "plain", text: "고철 부품 ×5 획득 — " }, { type: "good", text: "유물 복원 경험치 +12" }] },
 ];
 
-const INITIAL_LOGS: LogEntry[] = [
-  { time: "17:51", segments: [{ type: "highlight", text: "마나 결정(중급)" }, { type: "plain", text: " ×2 획득 — " }, { type: "reward", text: "+120 BSS 상당" }] },
-  { time: "17:48", segments: [{ type: "plain", text: "폐허 탐색 중 " }, { type: "danger", text: "변이체(2단계) 조우" }, { type: "plain", text: " — 자동 회피 성공" }] },
-  { time: "17:44", segments: [{ type: "highlight", text: "고대 유물 파편" }, { type: "plain", text: " 발견 — 유물 복원 스킬 적용 중" }] },
-  { time: "17:38", segments: [{ type: "plain", text: "폐허 탐색 " }, { type: "good", text: "Lv.12 달성" }, { type: "plain", text: " — 탐색 속도 +5%" }] },
-  { time: "17:21", segments: [{ type: "plain", text: "순환_기공사_렌 에게 " }, { type: "highlight", text: "정화수 ×1" }, { type: "plain", text: " 수령 — " }, { type: "good", text: "마나 피폭 -8%" }] },
-];
+import { INITIAL_LOGS } from "../types/log";
 
 function nowHHMM() {
   const d = new Date();
@@ -50,12 +61,17 @@ function fmtCountdown(ms: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function Content() {
-  const [elapsed,      setElapsed]      = useState(4 * 3600 + 32 * 60 + 17);
-  const [progress,     setProgress]     = useState(67);
-  const [itemPct,      setItemPct]      = useState(0);
-  const [countdownMs,  setCountdownMs]  = useState(ITEM_TICK_MS);
-  const [logs,         setLogs]         = useState<LogEntry[]>(INITIAL_LOGS);
+type Props = {
+  logs: LogEntry[];
+  onLog: (entry: LogEntry) => void;
+};
+
+export default function Content({ logs, onLog }: Props) {
+  const [activeZone,  setActiveZone]  = useState<string>("ruin-commercial");
+  const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
+  const [progress,    setProgress]    = useState(67);
+  const [itemPct,     setItemPct]     = useState(0);
+  const [countdownMs, setCountdownMs] = useState(ITEM_TICK_MS);
 
   const lootIdx      = useRef(0);
   const tickStart    = useRef(performance.now());
@@ -78,7 +94,7 @@ export default function Content() {
       if (sinceStart >= ITEM_TICK_MS) {
         const entry = { ...LOOT_POOL[lootIdx.current % LOOT_POOL.length], time: nowHHMM() };
         lootIdx.current += 1;
-        setLogs(prev => [entry, ...prev].slice(0, 20));
+        onLog(entry);
         setProgress(p => Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1)));
         tickStart.current = now;
       }
@@ -114,59 +130,54 @@ export default function Content() {
           <strong>&nbsp;1시간 47분</strong>. 야영지 내 정화수 확보 권장.
         </div>
 
-        <div className="activity-card">
-          <div className="activity-elapsed">◷ {fmtElapsed(elapsed)}</div>
-          <div className="activity-card-inner">
-
-            <div className="activity-zone">
-              <div className="activity-zone-art">
-                {"░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░"
-                  .split("\n").map((row, i) => <div key={i}>{row}</div>)}
-              </div>
-              <div className="activity-zone-label">상업 구획</div>
-            </div>
-
-            <div className="activity-main">
-              <div className="activity-name">상업 구획 폐건물</div>
-
-              <div className="activity-gauge-item">
-                <div className="progress-bar progress-bar--item">
-                  <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
+        <div className="zone-list">
+          {ZONES.map(z => {
+            const isActive = z.id === activeZone;
+            return (
+              <div
+                key={z.id}
+                className={`zone-row${isActive ? " zone-row--active" : ""}`}
+                onClick={() => setActiveZone(z.id)}
+              >
+                <div className="zone-row-art">
+                  {z.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
                 </div>
-              </div>
 
-              <div className="activity-gauge-explore">
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }} />
-                </div>
-              </div>
+                {isActive ? (
+                  <div className="zone-row-expanded">
+                    <div className="zone-row-expanded-header">
+                      <div className="zone-row-name">{z.name}</div>
+                      <div className="zone-elapsed">◷ {fmtElapsed(elapsed)}</div>
+                    </div>
+                    <div className="progress-bar progress-bar--item">
+                      <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
+                    </div>
+                    <div className="progress-bar" style={{ marginTop: 4 }}>
+                      <div className="progress-fill" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="zone-row-badges" style={{ marginTop: 8 }}>
+                      <span className="badge badge--loot">◈ 마나 결정 ×{14 + lootIdx.current}</span>
+                      <span className="badge badge--explore">▣ 탐색 {progress.toFixed(1)}%</span>
+                      <span className={`badge badge--danger ${DANGER_CLASS[z.danger]}`}>{z.danger}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="zone-row-info">
+                    <div className="zone-row-name">{z.name}</div>
+                    <div className="zone-row-badges">
+                      <span className="badge">Lv.{z.lv}</span>
+                      <span className="badge">◷ {z.tickSec}s</span>
+                      <span className={`badge badge--danger ${DANGER_CLASS[z.danger]}`}>{z.danger}</span>
+                    </div>
+                  </div>
+                )}
 
-              <div className="activity-badges">
-                <span className="badge badge--loot">◈ 마나 결정 ×{14 + lootIdx.current}</span>
-                <span className="badge badge--explore">▣ 탐색 {progress.toFixed(1)}%</span>
+                {!isActive && <div className="zone-row-arrow">›</div>}
               </div>
-            </div>
-
-          </div>
+            );
+          })}
         </div>
 
-        <div className="log-card">
-          <div className="log-card-title">══ 최근 활동 로그 ══</div>
-          <div className="log-card-inner">
-            {logs.map((entry, i) => (
-              <div key={i} className={`log-item${i === 0 ? " log-item--new" : ""}`}>
-                <span className="log-time">{entry.time}</span>
-                <span className="log-text">
-                  {entry.segments.map((seg, j) =>
-                    seg.type === "plain"
-                      ? <span key={j}>{seg.text}</span>
-                      : <span key={j} className={seg.type}>{seg.text}</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

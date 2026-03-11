@@ -3,6 +3,8 @@ import Topbar from "./components/Topbar";
 import SidebarLeft from "./components/SidebarLeft";
 import Content from "./components/Content";
 import SidebarRight from "./components/SidebarRight";
+import { INITIAL_LOGS } from "./types/log";
+import type { LogEntry } from "./types/log";
 
 const SIDEBAR_LEFT_DEFAULT  = 220;
 const SIDEBAR_RIGHT_DEFAULT = 280;
@@ -12,6 +14,11 @@ const SIDEBAR_MAX = 480;
 export default function App() {
   const [leftW,  setLeftW]  = useState(SIDEBAR_LEFT_DEFAULT);
   const [rightW, setRightW] = useState(SIDEBAR_RIGHT_DEFAULT);
+  const [logs,   setLogs]   = useState<LogEntry[]>(INITIAL_LOGS);
+
+  const handleLog = useCallback((entry: LogEntry) => {
+    setLogs(prev => [entry, ...prev].slice(0, 20));
+  }, []);
 
   const dragging = useRef<"left" | "right" | null>(null);
   const startX   = useRef(0);
@@ -57,8 +64,8 @@ export default function App() {
         style={{ gridTemplateColumns: `${leftW}px 1fr ${rightW}px` }}
       >
         <SidebarLeft />
-        <Content />
-        <SidebarRight />
+        <Content logs={logs} onLog={handleLog} />
+        <SidebarRight logs={logs} />
 
         <div
           className="resize-handle resize-handle--left"
