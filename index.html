@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>파이널 시티</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0c10;
+    color: #c8cdd8;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* 상단 네비 */
+  .topbar {
+    background: #0d1017;
+    border-bottom: 1px solid #1e2535;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 24px; }
+  .logo { color: #4a9eff; font-size: 15px; font-weight: bold; letter-spacing: 2px; }
+  .logo span { color: #2a5a99; }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-btn {
+    padding: 4px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: #7a8599;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .nav-btn:hover { background: #1a2030; color: #c8cdd8; }
+  .nav-btn.active { background: #1a2535; color: #4a9eff; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .nearby-topbar { display: flex; align-items: center; gap: 4px; }
+  .top-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #1a2535, #0d1a2a);
+    border: 2px solid #1e2d45;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .top-avatar:hover { border-color: #3a5a80; }
+  .top-avatar.blue   { border-color: #2a4a7a; }
+  .top-avatar.red    { border-color: #6a2a2a; }
+  .top-avatar.white  { border-color: #3a4a5a; }
+  .top-avatar.yellow { border-color: #6a5a2a; }
+  .top-avatar-more {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #111825; border: 2px solid #1e2535;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #4a5568; cursor: pointer;
+  }
+  .top-avatar-more:hover { border-color: #2a3a50; color: #8a9ab5; }
+  .soul-stone {
+    display: flex; align-items: center; gap: 6px;
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 6px; padding: 4px 10px;
+    color: #4a9eff; font-size: 12px;
+  }
+  .ss-dot { width: 8px; height: 8px; border-radius: 50%; background: #4a9eff; box-shadow: 0 0 6px #4a9eff; }
+  .user-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 6px; padding: 4px 10px; font-size: 12px;
+  }
+  .faction-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; }
+  .faction-dot.wanderer { background: #4a9eff; }
+
+  /* 메인 레이아웃 */
+  .main {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    height: calc(100vh - 44px);
+  }
+
+  /* 좌측 사이드바 */
+  .sidebar-left {
+    background: #0d1017;
+    border-right: 1px solid #1e2535;
+    overflow-y: auto;
+    padding: 12px 0;
+  }
+  .sidebar-left::-webkit-scrollbar { width: 4px; }
+  .sidebar-left::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-left::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 2px; }
+
+  .section-title {
+    padding: 4px 16px 6px;
+    font-size: 10px;
+    color: #3a4555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; cursor: pointer; color: #6a7588;
+    font-size: 12px; transition: all 0.1s;
+  }
+  .menu-item:hover { background: #111825; color: #c8cdd8; }
+  .menu-item.active { background: #111825; color: #4a9eff; border-left: 2px solid #4a9eff; }
+  .menu-icon { width: 14px; text-align: center; }
+
+  .divider { height: 1px; background: #1e2535; margin: 8px 0; }
+
+  /* 캐릭터 카드 */
+  .char-card {
+    margin: 12px; background: #0d1525;
+    border: 1px solid #1e2d45; border-radius: 8px; padding: 12px;
+  }
+  .char-portrait {
+    width: 48px; height: 48px; border-radius: 6px;
+    background: linear-gradient(135deg, #1a2535, #0d1a2a);
+    border: 1px solid #2a3d55; display: flex; align-items: center;
+    justify-content: center; font-size: 22px; margin-bottom: 8px;
+  }
+  .char-name { font-size: 13px; color: #c8cdd8; margin-bottom: 2px; }
+  .char-faction { font-size: 10px; color: #4a9eff; margin-bottom: 8px; }
+  .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+  .stat-label { color: #4a5568; }
+  .stat-bar {
+    height: 4px; border-radius: 2px; background: #1a2535;
+    margin-bottom: 6px; overflow: hidden;
+  }
+  .stat-fill { height: 100%; border-radius: 2px; }
+  .hp-fill { background: #4a9e6a; width: 72%; }
+  .mana-fill { background: #3a6abf; width: 38%; }
+  .soul-fill { background: #9a6adf; width: 60%; }
+
+  /* 스킬 목록 */
+  .skill-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 12px; border-radius: 4px; margin: 2px 8px;
+    cursor: pointer; font-size: 11px; color: #6a7588;
+  }
+  .skill-item:hover { background: #111825; color: #c8cdd8; }
+  .skill-item.active-skill { color: #c8cdd8; }
+  .skill-lv {
+    font-size: 10px; padding: 1px 6px;
+    background: #1a2535; border-radius: 3px; color: #4a9eff;
+  }
+  .skill-progress {
+    height: 3px; background: #1a2535; border-radius: 2px;
+    margin: 2px 12px 4px; overflow: hidden;
+  }
+  .skill-progress-fill { height: 100%; background: #4a9eff; border-radius: 2px; }
+
+  /* 중앙 콘텐츠 */
+  .content {
+    background: #0a0c10;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .content::-webkit-scrollbar { width: 4px; }
+  .content::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 2px; }
+
+  .content-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .page-title { font-size: 16px; color: #c8cdd8; }
+  .page-sub { font-size: 11px; color: #3a4555; margin-top: 2px; }
+
+  /* 현재 활동 카드 */
+  .activity-card {
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  }
+  .activity-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .activity-title { font-size: 13px; color: #c8cdd8; }
+  .activity-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #4a9e6a;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4a9e6a; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .progress-section { margin-bottom: 10px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: #4a5568; margin-bottom: 4px;
+  }
+  .progress-bar {
+    height: 6px; background: #1a2535; border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #2a6abf, #4a9eff);
+    width: 67%;
+  }
+  .activity-meta {
+    display: flex; gap: 16px; font-size: 11px; color: #4a5568; margin-top: 8px;
+  }
+  .meta-item { display: flex; align-items: center; gap: 4px; }
+  .meta-val { color: #8a9ab5; }
+
+  /* 야영지 패널 */
+  .camp-card {
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 10px; padding: 16px; margin-bottom: 16px;
+  }
+  .camp-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; font-size: 13px; color: #c8cdd8;
+  }
+  .camp-fire { font-size: 16px; }
+  .camp-users {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .camp-user {
+    display: flex; align-items: center; gap: 5px;
+    background: #111825; border-radius: 4px;
+    padding: 4px 8px; font-size: 11px; color: #8a9ab5;
+  }
+  .camp-user-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .cu-blue { background: #4a9eff; }
+  .cu-red { background: #bf4a4a; }
+  .cu-white { background: #9aaabf; }
+  .cu-yellow { background: #bfa04a; }
+
+  /* 최근 로그 */
+  .log-card {
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 10px; padding: 16px;
+  }
+  .log-item {
+    padding: 6px 0; border-bottom: 1px solid #111825;
+    font-size: 11px; color: #6a7588; display: flex; gap: 8px;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-time { color: #3a4555; white-space: nowrap; }
+  .log-text { color: #8a9ab5; }
+  .log-text .highlight { color: #4a9eff; }
+  .log-text .reward { color: #9a9e4a; }
+  .log-text .danger { color: #bf4a4a; }
+  .log-text .good { color: #4a9e6a; }
+
+  /* 우측 채팅 */
+  .sidebar-right {
+    background: #0d1017;
+    border-left: 1px solid #1e2535;
+    display: flex; flex-direction: column;
+  }
+  .chat-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid #1e2535;
+  }
+  .chat-tabs { display: flex; gap: 2px; margin-bottom: 8px; }
+  .chat-tab {
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 11px; cursor: pointer; color: #4a5568;
+    border: none; background: transparent; font-family: inherit;
+  }
+  .chat-tab:hover { background: #111825; color: #8a9ab5; }
+  .chat-tab.active { background: #111825; color: #4a9eff; }
+  .chat-info {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: #3a4555;
+  }
+  .online-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #4a9e6a; margin-right: 4px; }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 8px 12px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 3px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 2px; }
+
+  .msg { margin-bottom: 10px; }
+  .msg-system {
+    text-align: center; font-size: 10px;
+    color: #3a5070; background: #0a1020;
+    border-radius: 4px; padding: 3px 8px;
+    margin: 6px 0;
+  }
+  .msg-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+  .msg-name { font-size: 11px; font-weight: bold; }
+  .msg-name.blue { color: #4a9eff; }
+  .msg-name.red { color: #bf4a4a; }
+  .msg-name.white { color: #9aaabf; }
+  .msg-name.yellow { color: #bfa04a; }
+  .msg-name.brown { color: #9a7a4a; }
+  .msg-time { font-size: 10px; color: #3a4555; }
+  .msg-body { font-size: 11px; color: #8a9ab5; line-height: 1.5; padding-left: 2px; }
+  .msg-body em { color: #5a8abf; font-style: normal; }
+
+  /* 채팅 입력 */
+  .chat-input-area {
+    padding: 10px 12px;
+    border-top: 1px solid #1e2535;
+  }
+  .channel-tabs {
+    display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .ch-tab {
+    padding: 2px 7px; border-radius: 3px;
+    font-size: 10px; cursor: pointer; color: #3a4555;
+    background: #111825; border: none; font-family: inherit;
+  }
+  .ch-tab:hover { color: #8a9ab5; }
+  .ch-tab.active { color: #4a9eff; border: 1px solid #1e3a5a; }
+  .input-row { display: flex; gap: 6px; }
+  .chat-input {
+    flex: 1; background: #111825; border: 1px solid #1e2535;
+    border-radius: 4px; padding: 6px 10px; color: #c8cdd8;
+    font-size: 11px; font-family: inherit; outline: none;
+  }
+  .chat-input::placeholder { color: #2a3545; }
+  .chat-input:focus { border-color: #2a4060; }
+  .send-btn {
+    background: #1a3a6a; border: 1px solid #2a5090;
+    border-radius: 4px; padding: 6px 12px;
+    color: #4a9eff; font-size: 11px; cursor: pointer;
+    font-family: inherit;
+  }
+  .send-btn:hover { background: #1e4480; }
+
+  /* 마나 경보 배너 */
+  .alert-banner {
+    background: #1a1000; border: 1px solid #3a2500;
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 11px; color: #bfa04a;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .alert-icon { color: #bf7a00; }
+
+  /* 그리드 카드 */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .mini-card {
+    background: #0d1525; border: 1px solid #1e2d45;
+    border-radius: 8px; padding: 12px;
+  }
+  .mini-card-title { font-size: 10px; color: #3a4555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .mini-card-val { font-size: 18px; color: #c8cdd8; margin-bottom: 2px; }
+  .mini-card-sub { font-size: 10px; color: #4a5568; }
+  .trend-up { color: #4a9e6a; }
+  .trend-down { color: #bf4a4a; }
+</style>
+</head>
+<body>
+
+<!-- 상단 네비 -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">FINAL<span>CITY</span></div>
+    <div class="nav-links">
+      <button class="nav-btn active">캐릭터</button>
+      <button class="nav-btn">지도</button>
+      <button class="nav-btn">교역</button>
+      <button class="nav-btn">팩션</button>
+      <button class="nav-btn">비길레스</button>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="soul-stone">
+      <div class="ss-dot"></div>
+      영혼석 &nbsp;<strong>2,340</strong> BSS
+    </div>
+    <div class="user-badge">
+      <div class="faction-dot wanderer"></div>
+      방랑자_카이 &nbsp;·&nbsp; Lv.27
+    </div>
+  </div>
+</div>
+
+<!-- 메인 -->
+<div class="main">
+
+  <!-- 좌측 사이드바 -->
+  <div class="sidebar-left">
+
+    <!-- 캐릭터 카드 -->
+    <div class="char-card">
+      <div class="char-portrait">🧥</div>
+      <div class="char-name">방랑자_카이</div>
+      <div class="char-faction">● 무소속 방랑자 · Lv.27</div>
+
+      <div class="stat-row"><span class="stat-label">체력</span><span>720 / 1000</span></div>
+      <div class="stat-bar"><div class="stat-fill hp-fill"></div></div>
+
+      <div class="stat-row"><span class="stat-label">마나 피폭</span><span style="color:#bf4a4a">38%</span></div>
+      <div class="stat-bar"><div class="stat-fill mana-fill"></div></div>
+
+      <div class="stat-row"><span class="stat-label">영혼</span><span style="color:#9a6adf">3 / 5</span></div>
+      <div class="stat-bar"><div class="stat-fill soul-fill"></div></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">생존 기술</div>
+
+    <div class="skill-item active-skill">
+      <span>🔍 폐허 탐색</span>
+      <span class="skill-lv">Lv.12</span>
+    </div>
+    <div class="skill-progress"><div class="skill-progress-fill" style="width:67%"></div></div>
+
+    <div class="skill-item active-skill">
+      <span>⚗️ 마나 결정 채굴</span>
+      <span class="skill-lv">Lv.8</span>
+    </div>
+    <div class="skill-progress"><div class="skill-progress-fill" style="width:30%"></div></div>
+
+    <div class="skill-item">
+      <span>🌿 변이 식물 채집</span>
+      <span class="skill-lv">Lv.5</span>
+    </div>
+    <div class="skill-progress"><div class="skill-progress-fill" style="width:55%"></div></div>
+
+    <div class="skill-item">
+      <span>🔧 유물 복원</span>
+      <span class="skill-lv">Lv.3</span>
+    </div>
+    <div class="skill-progress"><div class="skill-progress-fill" style="width:12%"></div></div>
+
+    <div class="skill-item">
+      <span>🍖 변이 조리</span>
+      <span class="skill-lv">Lv.6</span>
+    </div>
+    <div class="skill-progress"><div class="skill-progress-fill" style="width:80%"></div></div>
+
+    <div class="divider"></div>
+    <div class="section-title">메뉴</div>
+
+    <div class="menu-item active"><span class="menu-icon">⊞</span> 개요</div>
+    <div class="menu-item"><span class="menu-icon">🎒</span> 인벤토리</div>
+    <div class="menu-item"><span class="menu-icon">⚔️</span> 장비</div>
+    <div class="menu-item"><span class="menu-icon">🗺️</span> 탐사 로그</div>
+    <div class="menu-item"><span class="menu-icon">👥</span> 팩션 평판</div>
+    <div class="menu-item"><span class="menu-icon">🏅</span> 업적</div>
+
+  </div>
+
+  <!-- 중앙 콘텐츠 -->
+  <div class="content">
+
+    <div class="content-header">
+      <div>
+        <div class="page-title">키르타스 평원 — 야영지 3구역</div>
+        <div class="page-sub">현재 위치 · 마나 농도 31% · 비교적 안전</div>
+      </div>
+      <div class="nearby-topbar">
+        <div class="top-avatar blue">🧥</div>
+        <div class="top-avatar red">🐺</div>
+        <div class="top-avatar white">⚙️</div>
+        <div class="top-avatar yellow">💎</div>
+        <div class="top-avatar blue">🗺️</div>
+        <div class="top-avatar-more">+29</div>
+      </div>
+    </div>
+
+    <!-- 마나 경보 -->
+    <div class="alert-banner">
+      <span class="alert-icon">⚠</span>
+      마나 폭풍 경보 — 북서 방향 접근 중. 도달 예상: <strong>&nbsp;1시간 47분</strong>. 야영지 내 정화수 확보 권장.
+    </div>
+
+
+
+    <!-- 현재 활동 -->
+    <div class="activity-card">
+      <div class="activity-header">
+        <div class="activity-title">🔍 폐허 탐색 — 상업 구획 폐건물</div>
+        <div class="activity-status">
+          <div class="status-dot"></div>
+          자동 진행 중
+        </div>
+      </div>
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>구획 탐색률</span>
+          <span>67%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+      <div class="activity-meta">
+        <div class="meta-item">⏱ 경과 <span class="meta-val">&nbsp;04:32:17</span></div>
+        <div class="meta-item">💎 획득 <span class="meta-val">&nbsp;마나 결정 ×14</span></div>
+        <div class="meta-item">📦 유물 <span class="meta-val">&nbsp;3점 발견</span></div>
+        <div class="meta-item" style="color:#bfa04a">⚡ 다음 아이템 <span class="meta-val">&nbsp;&nbsp;0:08</span></div>
+      </div>
+    </div>
+
+    <!-- NEARBY 카드 제거 -->
+
+    <!-- 최근 활동 로그 -->
+    <div class="log-card">
+      <div style="font-size:12px; color:#6a7588; margin-bottom:10px;">최근 활동 로그</div>
+      <div class="log-item">
+        <span class="log-time">17:51</span>
+        <span class="log-text"><span class="highlight">마나 결정(중급)</span> ×2 획득 — <span class="reward">+120 BSS 상당</span></span>
+      </div>
+      <div class="log-item">
+        <span class="log-time">17:48</span>
+        <span class="log-text">폐허 탐색 중 <span class="danger">변이체(2단계) 조우</span> — 자동 회피 성공</span>
+      </div>
+      <div class="log-item">
+        <span class="log-time">17:44</span>
+        <span class="log-text"><span class="highlight">고대 유물 파편</span> 발견 — 유물 복원 스킬 적용 중</span>
+      </div>
+      <div class="log-item">
+        <span class="log-time">17:38</span>
+        <span class="log-text">폐허 탐색 <span class="good">Lv.12 달성</span> — 탐색 속도 +5%</span>
+      </div>
+      <div class="log-item">
+        <span class="log-time">17:21</span>
+        <span class="log-text">순환_기공사_렌 에게 <span class="highlight">정화수 ×1</span> 수령 — <span class="good">마나 피폭 -8%</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 우측 채팅 -->
+  <div class="sidebar-right">
+    <div class="chat-header">
+      <div class="chat-tabs">
+        <button class="chat-tab active">공용</button>
+        <button class="chat-tab">야영지</button>
+        <button class="chat-tab">순환회</button>
+        <button class="chat-tab">귓속말</button>
+      </div>
+      <div class="chat-info">
+        <span><span class="online-dot"></span>키르타스 평원 · 1,847명 접속</span>
+        <span style="color:#2a3545">≋ 공용 주파수</span>
+      </div>
+    </div>
+
+    <div class="chat-messages">
+
+      <div class="msg-system">⚠ 마나 폭풍 경보 발령 — 북서 방향</div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name blue">방랑자_카이</span>
+          <span class="msg-time">17:42</span>
+        </div>
+        <div class="msg-body">야영지 3구역 모닥불 자리 남았음<br>변이 염소 치즈도 구웠는데 가져갈 사람</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name red">적야_세리온</span>
+          <span class="msg-time">17:43</span>
+        </div>
+        <div class="msg-body"><em>Khai-misu mata?</em> 치즈 같은 걸 먹어<br>고기나 가져와</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name blue">방랑자_카이</span>
+          <span class="msg-time">17:43</span>
+        </div>
+        <div class="msg-body">Khai-misu mata는 네가 더 어울리는데</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name white">순환_기공사_렌</span>
+          <span class="msg-time">17:45</span>
+        </div>
+        <div class="msg-body">폭풍 전에 마나 피폭 수치 확인들 하세요<br>정화수 나눠드릴게요 야영지 3구역으로</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name yellow">카르자트_하이루</span>
+          <span class="msg-time">17:46</span>
+        </div>
+        <div class="msg-body">정화수라니. 순환회 물은 믿을 수가 없음</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name white">순환_기공사_렌</span>
+          <span class="msg-time">17:46</span>
+        </div>
+        <div class="msg-body">...드시기 싫으시면 안 드셔도 됩니다</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name blue">방랑자_카이</span>
+          <span class="msg-time">17:48</span>
+        </div>
+        <div class="msg-body">ㅋㅋㅋ 렌 참을성 늘었네<br>아무튼 모닥불 쪽으로들 와요<br>오늘 폭풍 꽤 클 것 같으니까</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name red">적야_세리온</span>
+          <span class="msg-time">17:49</span>
+        </div>
+        <div class="msg-body">...가긴 감</div>
+      </div>
+
+      <div class="msg-system">🟤 방랑 상인이 야영지 3구역에 도착했습니다</div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name brown">??? 방랑상인</span>
+          <span class="msg-time">17:50</span>
+        </div>
+        <div class="msg-body"><em>Rakh sin khai!</em> 오늘 특산품 많이 가져왔어요~<br>파이널 시티 지도도 있습니다</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name blue">방랑자_카이</span>
+          <span class="msg-time">17:50</span>
+        </div>
+        <div class="msg-body">또 가짜 지도지?</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name brown">??? 방랑상인</span>
+          <span class="msg-time">17:51</span>
+        </div>
+        <div class="msg-body">이번엔 진짜임을 제 영혼석에 맹세합니다</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-header">
+          <span class="msg-name red">적야_세리온</span>
+          <span class="msg-time">17:51</span>
+        </div>
+        <div class="msg-body">ㅋㅋㅋㅋㅋ</div>
+      </div>
+
+    </div>
+
+    <div class="chat-input-area">
+      <div class="channel-tabs">
+        <button class="ch-tab active">공용</button>
+        <button class="ch-tab">야영지</button>
+        <button class="ch-tab">순환회</button>
+        <button class="ch-tab">적야</button>
+        <button class="ch-tab">카르자트</button>
+      </div>
+      <div class="input-row">
+        <input class="chat-input" placeholder="메시지 입력... (공용 채널)" />
+        <button class="send-btn">전송</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
