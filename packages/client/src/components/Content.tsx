@@ -115,38 +115,38 @@ export default function Content() {
         </div>
 
         <div className="activity-card">
-          <div className="activity-header">
-            <div className="activity-title">╔═ 폐허 탐색 — 상업 구획 폐건물 ═══</div>
-            <div className="activity-status">
-              <div className="status-dot" />
-              자동 진행 중
-            </div>
-          </div>
+          <div className="activity-elapsed">◷ {fmtElapsed(elapsed)}</div>
+          <div className="activity-card-inner">
 
-          <div className="progress-section">
-            <div className="progress-label progress-label--item">
-              <span>다음 아이템</span>
-              <span>{fmtCountdown(countdownMs)}</span>
+            <div className="activity-zone">
+              <div className="activity-zone-art">
+                {"░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░"
+                  .split("\n").map((row, i) => <div key={i}>{row}</div>)}
+              </div>
+              <div className="activity-zone-label">상업 구획</div>
             </div>
-            <div className="progress-bar progress-bar--item">
-              <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
-            </div>
-          </div>
 
-          <div className="progress-section">
-            <div className="progress-label">
-              <span>구획 탐색률</span>
-              <span>{progress.toFixed(1)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
+            <div className="activity-main">
+              <div className="activity-name">상업 구획 폐건물</div>
 
-          <div className="activity-meta">
-            <div className="meta-item">◷ 경과 <span className="meta-val">&nbsp;{fmtElapsed(elapsed)}</span></div>
-            <div className="meta-item">◈ 획득 <span className="meta-val">&nbsp;마나 결정 ×{14 + lootIdx.current}</span></div>
-            <div className="meta-item">▣ 유물 <span className="meta-val">&nbsp;3점 발견</span></div>
+              <div className="activity-gauge-item">
+                <div className="progress-bar progress-bar--item">
+                  <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
+                </div>
+              </div>
+
+              <div className="activity-gauge-explore">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+
+              <div className="activity-badges">
+                <span className="badge badge--loot">◈ 마나 결정 ×{14 + lootIdx.current}</span>
+                <span className="badge badge--explore">▣ 탐색 {progress.toFixed(1)}%</span>
+              </div>
+            </div>
+
           </div>
         </div>
 
