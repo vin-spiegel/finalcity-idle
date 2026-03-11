@@ -124,22 +124,22 @@ export default function Content() {
           </div>
 
           <div className="progress-section">
-            <div className="progress-label">
-              <span>구획 탐색률</span>
-              <span>{progress.toFixed(1)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-
-          <div className="progress-section">
             <div className="progress-label progress-label--item">
               <span>다음 아이템</span>
               <span>{fmtCountdown(countdownMs)}</span>
             </div>
             <div className="progress-bar progress-bar--item">
               <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
+            </div>
+          </div>
+
+          <div className="progress-section">
+            <div className="progress-label">
+              <span>구획 탐색률</span>
+              <span>{progress.toFixed(1)}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
 
