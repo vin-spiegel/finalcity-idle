@@ -3,6 +3,7 @@ import Topbar from "./components/Topbar";
 import SidebarLeft from "./components/SidebarLeft";
 import Content from "./components/Content";
 import SidebarRight from "./components/SidebarRight";
+import CRTOverlay from "./components/CRTOverlay";
 import { INITIAL_LOGS } from "./types/log";
 import type { LogEntry } from "./types/log";
 
@@ -78,6 +79,7 @@ export default function App() {
           onMouseDown={onMouseDown("right")}
         />
       </div>
+      <CRTOverlay />
     </>
   );
 }
