@@ -328,6 +328,9 @@ body {
   flex: 1;
   min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ─── TABBAR ─────────────────────────────────────────────── */
@@ -600,8 +603,10 @@ body {
   padding: 20px;
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 .content-body {
   display: flex;
