@@ -629,43 +629,53 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to bottom, rgba(7, 18, 18, 0.6) 50%, transparent);
+  padding: 8px 10px 14px;
+  background: linear-gradient(to bottom, rgba(7, 18, 18, 0.65) 55%, transparent);
   pointer-events: none;
 }
 
-.map-hud-top-info {
+.map-hud-title-row {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 7px 10px 4px;
-  font-size: 11px;
+  margin-bottom: 3px;
 }
 
 .map-hud-zone-name {
   color: var(--text-bright);
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.map-hud-elapsed {
-  color: var(--text-dim);
-  font-size: 10px;
-  flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 .map-hud-pct {
   color: var(--amber-dim);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
   flex-shrink: 0;
+}
+
+.map-hud-sub {
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+
+.map-hud-elapsed {
+  color: var(--text-bright);
+  font-size: 13px;
+  letter-spacing: 0.05em;
 }
 
 .map-hud-tick-bar {
   height: 2px;
   background: rgba(0, 0, 0, 0.3);
+  margin-top: 6px;
 }
 
 .map-hud-tick-fill {
@@ -680,12 +690,19 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 6px 10px 8px;
+  padding: 6px 10px 0;
   background: linear-gradient(to top, rgba(7, 18, 18, 0.5) 45%, transparent);
   display: flex;
   flex-direction: column;
   gap: 2px;
   pointer-events: none;
+}
+
+.map-hud-log .map-hud-tick-bar {
+  margin-top: 5px;
+  margin-left: -10px;
+  margin-right: -10px;
+  width: auto;
 }
 
 .map-hud-line {

@@ -169,14 +169,12 @@ export default function Content({ onLog, logs }: Props) {
         <div className="map-preview-wrap">
           <img src={mapPreview} alt="구역 지도" className="map-preview" />
           <div className="map-hud-top">
-            <div className="map-hud-top-info">
+            <div className="map-hud-title-row">
               <span className="map-hud-zone-name">{activeZoneData.name}</span>
-              <span className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</span>
               <span className="map-hud-pct">{progress.toFixed(1)}%</span>
             </div>
-            <div className="map-hud-tick-bar">
-              <div ref={tickFillRef} className="map-hud-tick-fill" />
-            </div>
+            <div className="map-hud-sub">{activeZoneData.location} · {activeZoneData.danger}</div>
+            <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>
           </div>
           {hudLogs.length > 0 && (
             <div className="map-hud-log">
@@ -195,6 +193,9 @@ export default function Content({ onLog, logs }: Props) {
                   </div>
                 );
               })}
+              <div className="map-hud-tick-bar">
+                <div ref={tickFillRef} className="map-hud-tick-fill" />
+              </div>
             </div>
           )}
         </div>
