@@ -64,7 +64,7 @@ export default function App() {
         style={{ gridTemplateColumns: `${leftW}px 1fr ${rightW}px` }}
       >
         <SidebarLeft />
-        <Content logs={logs} onLog={handleLog} />
+        <Content onLog={handleLog} />
         <SidebarRight logs={logs} />
 
         <div

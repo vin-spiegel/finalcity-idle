@@ -40,8 +40,6 @@ const LOOT_POOL: LogEntry[] = [
   { time: "", segments: [{ type: "plain", text: "고철 부품 ×5 획득 — " }, { type: "good", text: "유물 복원 경험치 +12" }] },
 ];
 
-import { INITIAL_LOGS } from "../types/log";
-
 function nowHHMM() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -54,24 +52,15 @@ function fmtElapsed(sec: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function fmtCountdown(ms: number) {
-  const total = Math.ceil(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 type Props = {
-  logs: LogEntry[];
   onLog: (entry: LogEntry) => void;
 };
 
-export default function Content({ logs, onLog }: Props) {
+export default function Content({ onLog }: Props) {
   const [activeZone,  setActiveZone]  = useState<string>("ruin-commercial");
   const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
   const [progress,    setProgress]    = useState(67);
   const [itemPct,     setItemPct]     = useState(0);
-  const [countdownMs, setCountdownMs] = useState(ITEM_TICK_MS);
 
   const lootIdx      = useRef(0);
   const tickStart    = useRef(performance.now());
@@ -89,7 +78,6 @@ export default function Content({ logs, onLog }: Props) {
       const sinceStart = now - tickStart.current;
       const pct = Math.min(sinceStart / ITEM_TICK_MS, 1);
       setItemPct(pct * 100);
-      setCountdownMs(Math.max(0, ITEM_TICK_MS - sinceStart));
 
       if (sinceStart >= ITEM_TICK_MS) {
         const entry = { ...LOOT_POOL[lootIdx.current % LOOT_POOL.length], time: nowHHMM() };
