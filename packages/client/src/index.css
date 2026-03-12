@@ -157,21 +157,6 @@ body {
 }
 .alert-banner-close:hover { color: var(--text-dim); }
 
-/* ─── ZONE PROGRESS BAR ─────────────────────────────────── */
-
-.zone-progress-bar {
-  height: 3px;
-  background: var(--panel-deep);
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(0,0,0,0.4);
-}
-
-.zone-progress-fill {
-  height: 100%;
-  background: var(--amber-dim);
-  box-shadow: 0 0 6px rgba(181, 137, 0, 0.6);
-  width: 0%;
-}
 
 /* ─── TOPBAR ─────────────────────────────────────────────── */
 
@@ -637,6 +622,57 @@ body {
   display: block;
   width: 100%;
   image-rendering: pixelated;
+}
+
+.map-hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, rgba(7, 18, 18, 0.6) 50%, transparent);
+  pointer-events: none;
+}
+
+.map-hud-top-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px 4px;
+  font-size: 11px;
+}
+
+.map-hud-zone-name {
+  color: var(--text-bright);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-hud-elapsed {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.map-hud-pct {
+  color: var(--amber-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.map-hud-tick-bar {
+  height: 2px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.map-hud-tick-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--amber-dim);
+  box-shadow: 0 0 4px rgba(181, 137, 0, 0.7);
 }
 
 .map-hud-log {

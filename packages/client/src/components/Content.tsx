@@ -73,18 +73,16 @@ function fmtElapsed(sec: number) {
 
 type Props = {
   onLog: (entry: LogEntry) => void;
-  onProgress: (pct: number) => void;
-  tickFillRef: React.RefObject<HTMLDivElement | null>;
   logs: LogEntry[];
 };
 
-export default function Content({ onLog, onProgress, tickFillRef, logs }: Props) {
+export default function Content({ onLog, logs }: Props) {
   const [activeZone,  setActiveZone]  = useState<string>("ruin-commercial");
   const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
   const [progress,    setProgress]    = useState(67);
-  const [itemPct,     setItemPct]     = useState(0);
   const [zoneModal,   setZoneModal]   = useState<ZoneModalState | null>(null);
 
+  const tickFillRef  = useRef<HTMLDivElement>(null);
   const lootIdx      = useRef(0);
   const tickStart    = useRef(performance.now());
   const elapsedStart = useRef(performance.now());
@@ -100,18 +98,13 @@ export default function Content({ onLog, onProgress, tickFillRef, logs }: Props)
 
       const sinceStart = now - tickStart.current;
       const pct = Math.min(sinceStart / ITEM_TICK_MS, 1);
-      setItemPct(pct * 100);
       if (tickFillRef.current) tickFillRef.current.style.width = `${pct * 100}%`;
 
       if (sinceStart >= ITEM_TICK_MS) {
         const entry = { ...LOOT_POOL[lootIdx.current % LOOT_POOL.length], time: nowHHMM() };
         lootIdx.current += 1;
         onLog(entry);
-        setProgress(p => {
-          const next = Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1));
-          onProgress(next);
-          return next;
-        });
+        setProgress(p => Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1)));
         tickStart.current = now;
       }
 
@@ -135,8 +128,9 @@ export default function Content({ onLog, onProgress, tickFillRef, logs }: Props)
     closeModal();
   };
 
-  const hudLogs = logs.slice(0, HUD_LOG_COUNT);
-  const crumbs = ROOT_CRUMBS;
+  const hudLogs    = logs.slice(0, HUD_LOG_COUNT);
+  const crumbs     = ROOT_CRUMBS;
+  const activeZoneData = ZONES.find(z => z.id === activeZone)!;
 
   return (
     <div className="content">
@@ -174,6 +168,16 @@ export default function Content({ onLog, onProgress, tickFillRef, logs }: Props)
       <div className="content-body">
         <div className="map-preview-wrap">
           <img src={mapPreview} alt="구역 지도" className="map-preview" />
+          <div className="map-hud-top">
+            <div className="map-hud-top-info">
+              <span className="map-hud-zone-name">{activeZoneData.name}</span>
+              <span className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</span>
+              <span className="map-hud-pct">{progress.toFixed(1)}%</span>
+            </div>
+            <div className="map-hud-tick-bar">
+              <div ref={tickFillRef} className="map-hud-tick-fill" />
+            </div>
+          </div>
           {hudLogs.length > 0 && (
             <div className="map-hud-log">
               {[...hudLogs].reverse().map((entry, i) => {
@@ -212,9 +216,6 @@ export default function Content({ onLog, onProgress, tickFillRef, logs }: Props)
                     <div className="zone-row-expanded-header">
                       <div className="zone-row-name">{z.name}</div>
                       <div className="zone-elapsed">◷ {fmtElapsed(elapsed)}</div>
-                    </div>
-                    <div className="progress-bar progress-bar--item">
-                      <div className="progress-fill--item" style={{ width: `${itemPct}%` }} />
                     </div>
                     <div className="progress-bar" style={{ marginTop: 4 }}>
                       <div className="progress-fill" style={{ width: `${progress}%` }} />

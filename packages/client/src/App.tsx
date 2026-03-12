@@ -21,17 +21,11 @@ export default function App() {
   const [activeTab,   setActiveTab]   = useState<SidebarTab>('chat');
   const [logs,        setLogs]        = useState<LogEntry[]>(INITIAL_LOGS);
   const [tabbarTab,   setTabbarTab]   = useState<TabbarTab>('map');
-  const [progress,    setProgress]    = useState(67);
-  const tickFillRef = useRef<HTMLDivElement>(null);
 
   const savedRightW = useRef(SIDEBAR_RIGHT_DEFAULT);
 
   const handleLog = useCallback((entry: LogEntry) => {
     setLogs(prev => [entry, ...prev].slice(0, 20));
-  }, []);
-
-  const handleProgress = useCallback((pct: number) => {
-    setProgress(pct);
   }, []);
 
   // Clicking a topbar icon:
@@ -102,11 +96,8 @@ export default function App() {
             activeTab={activeTab}
             onTabClick={handleTabClick}
           />
-          <div className="zone-progress-bar">
-            <div ref={tickFillRef} className="zone-progress-fill" />
-          </div>
           <div className="main">
-            <Content onLog={handleLog} onProgress={handleProgress} tickFillRef={tickFillRef} logs={logs} />
+            <Content onLog={handleLog} logs={logs} />
           </div>
           <Tabbar activeTab={tabbarTab} onTabClick={setTabbarTab} />
         </div>
