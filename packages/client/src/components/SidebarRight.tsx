@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { LogEntry } from '../types/log';
 import type { SidebarTab } from '../App';
 
 // ── Notifications ────────────────────────────────────────
@@ -40,11 +39,10 @@ const MESSAGES: ChatMsg[] = [
 // ── Component ────────────────────────────────────────────
 
 type Props = {
-  logs: LogEntry[];
   activeTab: SidebarTab;
 };
 
-export default function SidebarRight({ logs, activeTab }: Props) {
+export default function SidebarRight({ activeTab }: Props) {
   const [channel, setChannel] = useState('공용');
 
   return (
@@ -63,25 +61,6 @@ export default function SidebarRight({ logs, activeTab }: Props) {
                 {n.sub && <span className="notif-sub">{n.sub}</span>}
               </div>
               <span className="notif-time">{n.time}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Log ── */}
-      {activeTab === 'log' && (
-        <div className="sidebar-panel sidebar-log">
-          <div className="sidebar-panel-header">활동 로그</div>
-          {logs.map((entry, i) => (
-            <div key={i} className={`log-item${i === 0 ? ' log-item--new' : ''}`}>
-              <span className="log-time">{entry.time}</span>
-              <span className="log-text">
-                {entry.segments.map((seg, j) =>
-                  seg.type === 'plain'
-                    ? <span key={j}>{seg.text}</span>
-                    : <span key={j} className={seg.type}>{seg.text}</span>
-                )}
-              </span>
             </div>
           ))}
         </div>

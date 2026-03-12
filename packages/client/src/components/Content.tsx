@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
+import mapPreview from "../assets/map-preview.png";
 import Modal from "./Modal";
 import type { LogEntry } from "../types/log";
+
+type Crumb = { label: string; key: string };
+
+const ROOT_CRUMBS: Crumb[] = [
+  { label: "지도",          key: "world" },
+  { label: "키르타스 평원", key: "region" },
+  { label: "야영지 3구역",  key: "zone" },
+];
 
 type Zone = {
   id: string;
@@ -35,6 +45,7 @@ const DANGER_CLASS: Record<Zone["danger"], string> = {
 
 const ITEM_TICK_MS      = 12_000;
 const PROGRESS_PER_ITEM = 1.5;
+const HUD_LOG_COUNT     = 4;
 
 const LOOT_POOL: LogEntry[] = [
   { time: "", segments: [{ type: "highlight", text: "마나 결정(중급)" }, { type: "plain", text: " ×2 획득 — " }, { type: "reward", text: "+120 BSS 상당" }] },
@@ -59,16 +70,20 @@ function fmtElapsed(sec: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+
 type Props = {
   onLog: (entry: LogEntry) => void;
+  onProgress: (pct: number) => void;
+  tickFillRef: React.RefObject<HTMLDivElement | null>;
+  logs: LogEntry[];
 };
 
-export default function Content({ onLog }: Props) {
+export default function Content({ onLog, onProgress, tickFillRef, logs }: Props) {
   const [activeZone,  setActiveZone]  = useState<string>("ruin-commercial");
   const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
   const [progress,    setProgress]    = useState(67);
   const [itemPct,     setItemPct]     = useState(0);
-  const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null);
+  const [zoneModal,   setZoneModal]   = useState<ZoneModalState | null>(null);
 
   const lootIdx      = useRef(0);
   const tickStart    = useRef(performance.now());
@@ -86,12 +101,17 @@ export default function Content({ onLog }: Props) {
       const sinceStart = now - tickStart.current;
       const pct = Math.min(sinceStart / ITEM_TICK_MS, 1);
       setItemPct(pct * 100);
+      if (tickFillRef.current) tickFillRef.current.style.width = `${pct * 100}%`;
 
       if (sinceStart >= ITEM_TICK_MS) {
         const entry = { ...LOOT_POOL[lootIdx.current % LOOT_POOL.length], time: nowHHMM() };
         lootIdx.current += 1;
         onLog(entry);
-        setProgress(p => Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1)));
+        setProgress(p => {
+          const next = Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1));
+          onProgress(next);
+          return next;
+        });
         tickStart.current = now;
       }
 
@@ -102,46 +122,44 @@ export default function Content({ onLog }: Props) {
     return () => cancelAnimationFrame(rafId.current);
   }, []);
 
-
-
-  const openZoneModal = (zone: Zone) => {
-    setZoneModal({ mode: "zone", zone });
-  };
-
-
-
-
-
-  const closeModal = () => {
-    setZoneModal(null);
-  };
+  const openZoneModal = (zone: Zone) => setZoneModal({ mode: "zone", zone });
+  const closeModal = () => setZoneModal(null);
 
   const handleModalChoice = (choiceId: string) => {
-    if (!zoneModal) {
-      return;
-    }
-
+    if (!zoneModal) return;
     if (zoneModal.mode === "zone") {
-      if (choiceId === "confirm") {
-        setActiveZone(zoneModal.zone.id);
-      }
-
-      if (choiceId !== "inspect") {
-        closeModal();
-      }
-
+      if (choiceId === "confirm") setActiveZone(zoneModal.zone.id);
+      if (choiceId !== "inspect") closeModal();
       return;
     }
-
     closeModal();
   };
+
+  const hudLogs = logs.slice(0, HUD_LOG_COUNT);
+  const crumbs = ROOT_CRUMBS;
 
   return (
     <div className="content">
       <div className="content-header">
-        <div>
-          <div className="page-title">키르타스 평원 — 야영지 3구역</div>
-          <div className="page-sub">현재 위치 · 마나 농도 31% · 비교적 안전</div>
+        <div className="breadcrumb-row">
+          {crumbs.length > 1 && (
+            <button className="back-btn" title="뒤로">
+              <ChevronLeft size={14} />
+            </button>
+          )}
+          <nav className="breadcrumb">
+            {crumbs.map((c, i) => (
+              <span key={c.key} className="breadcrumb-item">
+                {i < crumbs.length - 1 ? (
+                  <button className="breadcrumb-link">{c.label}</button>
+                ) : (
+                  <span className="breadcrumb-current">{c.label}</span>
+                )}
+                {i < crumbs.length - 1 && <span className="breadcrumb-sep">›</span>}
+              </span>
+            ))}
+          </nav>
+          <div className="page-sub" style={{ marginLeft: 'auto' }}>마나 농도 31% · 비교적 안전</div>
         </div>
         <div className="nearby-topbar">
           <div className="top-avatar blue">◎</div>
@@ -154,12 +172,28 @@ export default function Content({ onLog }: Props) {
       </div>
 
       <div className="content-body">
-
-
-
-
-
-
+        <div className="map-preview-wrap">
+          <img src={mapPreview} alt="구역 지도" className="map-preview" />
+          {hudLogs.length > 0 && (
+            <div className="map-hud-log">
+              {[...hudLogs].reverse().map((entry, i) => {
+                const age = hudLogs.length - 1 - i;
+                return (
+                  <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
+                    <span className="log-time">{entry.time}</span>
+                    <span className="log-text">
+                      {entry.segments.map((seg, j) =>
+                        seg.type === "plain"
+                          ? <span key={j}>{seg.text}</span>
+                          : <span key={j} className={seg.type}>{seg.text}</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <div className="zone-list">
           {ZONES.map(z => {
             const isActive = z.id === activeZone;
@@ -167,7 +201,7 @@ export default function Content({ onLog }: Props) {
               <div
                 key={z.id}
                 className={`zone-row${isActive ? " zone-row--active" : ""}`}
-                onClick={() => openZoneModal(z)}
+                onClick={() => !isActive && openZoneModal(z)}
               >
                 <div className="zone-row-art">
                   {z.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
@@ -190,6 +224,7 @@ export default function Content({ onLog }: Props) {
                       <span className="badge badge--explore">▣ 탐색 {progress.toFixed(1)}%</span>
                       <span className={`badge badge--danger ${DANGER_CLASS[z.danger]}`}>{z.danger}</span>
                     </div>
+
                   </div>
                 ) : (
                   <div className="zone-row-info">
@@ -207,7 +242,6 @@ export default function Content({ onLog }: Props) {
             );
           })}
         </div>
-
       </div>
 
       {zoneModal && (

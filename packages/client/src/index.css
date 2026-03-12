@@ -99,6 +99,80 @@ body {
   z-index: 9999;
 }
 
+/* ─── ALERT BANNER ──────────────────────────────────────── */
+
+.alert-banner-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.alert-banner--storm {
+  background: rgba(220, 50, 47, 0.08);
+  border-left: 2px solid var(--red-dim);
+  color: var(--text);
+}
+.alert-banner--npc {
+  background: rgba(42, 161, 152, 0.08);
+  border-left: 2px solid var(--cyan-dim);
+  color: var(--text);
+}
+.alert-banner--system {
+  background: rgba(181, 137, 0, 0.08);
+  border-left: 2px solid var(--amber-dim);
+  color: var(--text);
+}
+
+.alert-banner-icon { flex-shrink: 0; }
+
+.alert-banner-body {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.alert-banner-text { color: var(--text); }
+.alert-banner-sub  { color: var(--text-dim); font-size: 10px; }
+
+.alert-banner-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.alert-banner-close:hover { color: var(--text-dim); }
+
+/* ─── ZONE PROGRESS BAR ─────────────────────────────────── */
+
+.zone-progress-bar {
+  height: 3px;
+  background: var(--panel-deep);
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.4);
+}
+
+.zone-progress-fill {
+  height: 100%;
+  background: var(--amber-dim);
+  box-shadow: 0 0 6px rgba(181, 137, 0, 0.6);
+  width: 0%;
+}
+
 /* ─── TOPBAR ─────────────────────────────────────────────── */
 
 .topbar {
@@ -244,13 +318,76 @@ body {
   overflow: hidden;
 }
 
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+.app-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-right {
+  position: relative;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
 .main {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 220px 1fr 280px;
   position: relative;
-  transition: grid-template-columns 0.2s ease;
+}
+
+/* ─── TABBAR ─────────────────────────────────────────────── */
+
+.tabbar {
+  display: flex;
+  align-items: stretch;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 0 0 var(--bg), 0 -2px 0 0 var(--border);
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.tabbar-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  border-top: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.tabbar-btn:hover {
+  color: var(--text);
+  background: var(--panel-deep);
+}
+.tabbar-btn.active {
+  color: var(--cyan);
+  border-top-color: var(--cyan-dim);
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+}
+.tabbar-btn.active svg {
+  filter: drop-shadow(0 0 4px rgba(0, 255, 255, 0.5));
+}
+
+.tabbar-label {
+  letter-spacing: 0.5px;
 }
 
 
@@ -489,10 +626,105 @@ body {
   gap: 16px;
 }
 
+.map-preview-wrap {
+  position: relative;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.map-preview {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+}
+
+.map-hud-log {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 10px 8px;
+  background: linear-gradient(to top, rgba(7, 18, 18, 0.5) 45%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.map-hud-line {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--log-text);
+  transition: opacity 0.5s ease;
+}
+
 .content-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 16px;
+  gap: 12px;
 }
+
+.breadcrumb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--panel-deep);
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+.back-btn:hover { color: var(--cyan-dim); border-color: var(--border); }
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s;
+}
+.breadcrumb-link:hover { color: var(--cyan-dim); }
+
+.breadcrumb-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-size: 12px;
+}
+
 .content-header-actions {
   display: flex;
   align-items: center;
@@ -656,6 +888,41 @@ body {
 
 .zone-row-badges { display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* ── Inline log ── */
+.inline-log {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-dim);
+  padding-top: 8px;
+}
+
+.inline-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inline-log-item {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--log-text-dim);
+  line-height: 1.4;
+}
+.inline-log-item.log-item--new { color: var(--log-text); }
+
+.inline-log-toggle {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.3px;
+}
+.inline-log-toggle:hover { color: var(--text-dim); }
+
 .zone-row-arrow {
   font-size: 16px;
   color: var(--border);
@@ -762,9 +1029,11 @@ body {
 
 .sidebar-right {
   background: var(--log-bg);
-  border-left: 1px solid var(--log-border);
+  border-left: none;
   display: flex; flex-direction: column;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 /* Generic scrollable panel for notif/log/chat */
