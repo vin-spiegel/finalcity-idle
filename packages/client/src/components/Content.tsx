@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import avatar from "../assets/image.png";
+import Modal from "./Modal";
 import type { LogEntry } from "../types/log";
 
 type Zone = {
@@ -9,6 +11,11 @@ type Zone = {
   tickSec: number;
   danger: "안전" | "보통" | "위험" | "극한";
   art: string;
+};
+
+type ZoneModalState = {
+  mode: "zone" | "lore";
+  zone: Zone;
 };
 
 const ZONES: Zone[] = [
@@ -61,6 +68,7 @@ export default function Content({ onLog }: Props) {
   const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
   const [progress,    setProgress]    = useState(67);
   const [itemPct,     setItemPct]     = useState(0);
+  const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null);
 
   const lootIdx      = useRef(0);
   const tickStart    = useRef(performance.now());
@@ -94,6 +102,40 @@ export default function Content({ onLog }: Props) {
     return () => cancelAnimationFrame(rafId.current);
   }, []);
 
+  const activeZoneData = ZONES.find((zone) => zone.id === activeZone) ?? ZONES[0];
+
+  const openZoneModal = (zone: Zone) => {
+    setZoneModal({ mode: "zone", zone });
+  };
+
+  const openLoreModal = () => {
+    setZoneModal({ mode: "lore", zone: activeZoneData });
+  };
+
+  const closeModal = () => {
+    setZoneModal(null);
+  };
+
+  const handleModalChoice = (choiceId: string) => {
+    if (!zoneModal) {
+      return;
+    }
+
+    if (zoneModal.mode === "zone") {
+      if (choiceId === "confirm") {
+        setActiveZone(zoneModal.zone.id);
+      }
+
+      if (choiceId !== "inspect") {
+        closeModal();
+      }
+
+      return;
+    }
+
+    closeModal();
+  };
+
   return (
     <div className="content">
       <div className="content-header">
@@ -101,13 +143,18 @@ export default function Content({ onLog }: Props) {
           <div className="page-title">키르타스 평원 — 야영지 3구역</div>
           <div className="page-sub">현재 위치 · 마나 농도 31% · 비교적 안전</div>
         </div>
-        <div className="nearby-topbar">
-          <div className="top-avatar blue">◎</div>
-          <div className="top-avatar red">◈</div>
-          <div className="top-avatar white">◉</div>
-          <div className="top-avatar yellow">◆</div>
-          <div className="top-avatar blue">▣</div>
-          <div className="top-avatar-more">+29</div>
+        <div className="content-header-actions">
+          <button className="modal-trigger" type="button" onClick={openLoreModal}>
+            개체 정보 열기
+          </button>
+          <div className="nearby-topbar">
+            <div className="top-avatar blue">◎</div>
+            <div className="top-avatar red">◈</div>
+            <div className="top-avatar white">◉</div>
+            <div className="top-avatar yellow">◆</div>
+            <div className="top-avatar blue">▣</div>
+            <div className="top-avatar-more">+29</div>
+          </div>
         </div>
       </div>
 
@@ -125,7 +172,7 @@ export default function Content({ onLog }: Props) {
               <div
                 key={z.id}
                 className={`zone-row${isActive ? " zone-row--active" : ""}`}
-                onClick={() => setActiveZone(z.id)}
+                onClick={() => openZoneModal(z)}
               >
                 <div className="zone-row-art">
                   {z.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
@@ -167,6 +214,43 @@ export default function Content({ onLog }: Props) {
         </div>
 
       </div>
+
+      {zoneModal && (
+        <Modal
+          isOpen={true}
+          imageSrc={avatar}
+          imageAlt={zoneModal.mode === "zone" ? `${zoneModal.zone.name} 초상` : "개체 초상"}
+          label={zoneModal.mode === "zone" ? zoneModal.zone.name : "Polyxitos, Legendary Plasma Jelly"}
+          sublabel={zoneModal.mode === "zone"
+            ? `${zoneModal.zone.location} · Lv.${zoneModal.zone.lv} · ${zoneModal.zone.danger}`
+            : "Hostile, Impossible"}
+          dividerLabel={zoneModal.mode === "zone" ? "탐험 개시 확인" : "개체 기록"}
+          body={zoneModal.mode === "zone"
+            ? [
+                `${zoneModal.zone.name} 구역으로 이동하면 현재 탐험 대상이 즉시 전환됩니다.`,
+                `예상 탐험 간격은 ${zoneModal.zone.tickSec}초이며 위험도는 ${zoneModal.zone.danger}입니다. 준비가 끝났다면 아래 선택지에서 시작하세요.`,
+              ]
+            : [
+                "불타는 이온 장미가 유리질 막 내부에서 피어난다. 꼬리를 끄는 은하의 종소리와 비취색 증기가 공기 위를 미끄러지듯 번진다.",
+                "순환회는 이 개체를 살아 있는 균열의 부산물로 분류한다. 짧게 스친 잔향만으로도 피폭 수치와 환영 반응이 동시에 상승했다.",
+                "관찰 결과: 접근 금지. 다만 충분한 정화막과 냉각 장비가 있다면 파편 채집은 가능할지도 모른다.",
+              ]}
+          choices={zoneModal.mode === "zone"
+            ? [
+                { id: "inspect", label: "정보만 확인", hint: `${zoneModal.zone.location}`, tone: "neutral" },
+                { id: "confirm", label: "탐험 시작", hint: `${zoneModal.zone.tickSec}초 간격`, tone: "primary" },
+                { id: "cancel", label: "취소", hint: "현재 구역 유지", tone: "danger" },
+              ]
+            : [
+                { id: "track", label: "추적 시작", hint: "위치 마킹", tone: "primary" },
+                { id: "prepare", label: "대비 장비 확인", hint: "정화막 / 냉각", tone: "neutral" },
+                { id: "close", label: "기록 닫기", hint: "ESC", tone: "danger" },
+              ]}
+          onClose={closeModal}
+          onChoice={(choice) => handleModalChoice(choice.id)}
+          closeOnOverlayClick={zoneModal.mode !== "zone"}
+        />
+      )}
     </div>
   );
 }
