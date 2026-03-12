@@ -102,15 +102,15 @@ export default function Content({ onLog }: Props) {
     return () => cancelAnimationFrame(rafId.current);
   }, []);
 
-  const activeZoneData = ZONES.find((zone) => zone.id === activeZone) ?? ZONES[0];
+
 
   const openZoneModal = (zone: Zone) => {
     setZoneModal({ mode: "zone", zone });
   };
 
-  const openLoreModal = () => {
-    setZoneModal({ mode: "lore", zone: activeZoneData });
-  };
+
+
+
 
   const closeModal = () => {
     setZoneModal(null);
@@ -143,27 +143,22 @@ export default function Content({ onLog }: Props) {
           <div className="page-title">키르타스 평원 — 야영지 3구역</div>
           <div className="page-sub">현재 위치 · 마나 농도 31% · 비교적 안전</div>
         </div>
-        <div className="content-header-actions">
-          <button className="modal-trigger" type="button" onClick={openLoreModal}>
-            개체 정보 열기
-          </button>
-          <div className="nearby-topbar">
-            <div className="top-avatar blue">◎</div>
-            <div className="top-avatar red">◈</div>
-            <div className="top-avatar white">◉</div>
-            <div className="top-avatar yellow">◆</div>
-            <div className="top-avatar blue">▣</div>
-            <div className="top-avatar-more">+29</div>
-          </div>
+        <div className="nearby-topbar">
+          <div className="top-avatar blue">◎</div>
+          <div className="top-avatar red">◈</div>
+          <div className="top-avatar white">◉</div>
+          <div className="top-avatar yellow">◆</div>
+          <div className="top-avatar blue">▣</div>
+          <div className="top-avatar-more">+29</div>
         </div>
       </div>
 
       <div className="content-body">
-        <div className="alert-banner">
-          <span className="alert-icon">⚠</span>
-          <strong>STORM ALERT</strong> — 마나 폭풍 북서 방향 접근 중. 도달 예상:{" "}
-          <strong>&nbsp;1시간 47분</strong>. 야영지 내 정화수 확보 권장.
-        </div>
+
+
+
+
+
 
         <div className="zone-list">
           {ZONES.map(z => {
