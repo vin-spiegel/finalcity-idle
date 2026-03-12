@@ -21,6 +21,7 @@ type Zone = {
   tickSec: number;
   danger: "안전" | "보통" | "위험" | "극한";
   art: string;
+  desc: string;
 };
 
 type ZoneModalState = {
@@ -29,11 +30,31 @@ type ZoneModalState = {
 };
 
 const ZONES: Zone[] = [
-  { id: "ruin-commercial", name: "상업 구획 폐건물",  location: "키르타스 평원",  lv: 1,  tickSec: 12, danger: "안전", art: "░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░" },
-  { id: "ruin-factory",    name: "구 제조 공장 지하", location: "키르타스 평원",  lv: 5,  tickSec: 18, danger: "보통", art: "▒░▒▓▒░▒\n░▓████▓░\n▓██▓███▓\n░▓████▓░\n▒░▒▓▒░▒" },
-  { id: "mana-rift",       name: "마나 균열 지대",    location: "붉은 협곡",      lv: 12, tickSec: 25, danger: "위험", art: "░▒░▓░▒░\n▒▓▒█▒▓▒\n▓█▓▓▓█▓\n▒▓▒█▒▓▒\n░▒░▓░▒░" },
-  { id: "ancient-lab",     name: "고대 연구소 잔해",  location: "회색 고원",      lv: 20, tickSec: 35, danger: "위험", art: "▓▒░▒░▒▓\n▒▓▒▓▒▓▒\n░▒▓███▒░\n▒▓▒▓▒▓▒\n▓▒░▒░▒▓" },
-  { id: "void-sector",     name: "공허 구역 심층부",  location: "파이널 시티 외곽", lv: 30, tickSec: 50, danger: "극한", art: "█▓▒░▒▓█\n▓█▓▒▓█▓\n▒▓█▓█▓▒\n▓█▓▒▓█▓\n█▓▒░▒▓█" },
+  {
+    id: "ruin-commercial", name: "상업 구획 폐건물", location: "키르타스 평원", lv: 1, tickSec: 12, danger: "안전",
+    art: "░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░",
+    desc: "도시가 숨을 거두던 날에도 간판은 켜져 있었다. 마나 결정이 균열 사이로 자라나고 있지만, 아직 거스름돈을 기다리는 카운터가 남아 있다.",
+  },
+  {
+    id: "ruin-factory", name: "구 제조 공장 지하", location: "키르타스 평원", lv: 5, tickSec: 18, danger: "보통",
+    art: "▒░▒▓▒░▒\n░▓████▓░\n▓██▓███▓\n░▓████▓░\n▒░▒▓▒░▒",
+    desc: "가동 정지 명령을 받지 못한 기계들이 지하 3층에서 아직 무언가를 찍어내고 있다. 순환회는 생산물의 정체를 공개하지 않는다.",
+  },
+  {
+    id: "mana-rift", name: "마나 균열 지대", location: "붉은 협곡", lv: 12, tickSec: 25, danger: "위험",
+    art: "░▒░▓░▒░\n▒▓▒█▒▓▒\n▓█▓▓▓█▓\n▒▓▒█▒▓▒\n░▒░▓░▒░",
+    desc: "현실의 막이 얇아져 빛이 비틀린다. 순환회 공식 관측 기록에서 이 구역의 좌표는 세 번 삭제되었다.",
+  },
+  {
+    id: "ancient-lab", name: "고대 연구소 잔해", location: "회색 고원", lv: 20, tickSec: 35, danger: "위험",
+    art: "▓▒░▒░▒▓\n▒▓▒▓▒▓▒\n░▒▓███▒░\n▒▓▒▓▒▓▒\n▓▒░▒░▒▓",
+    desc: "데이터는 지워졌으나 피실험체는 남아 있다. 연구 목적은 끝내 밝혀지지 않았고, 여기선 아무것도 자연사하지 않는다.",
+  },
+  {
+    id: "void-sector", name: "공허 구역 심층부", location: "파이널 시티 외곽", lv: 30, tickSec: 50, danger: "극한",
+    art: "█▓▒░▒▓█\n▓█▓▒▓█▓\n▒▓█▓█▓▒\n▓█▓▒▓█▓\n█▓▒░▒▓█",
+    desc: "도시의 끝에서 공허가 시작된다. 이 지점을 지나 귀환한 탐색자의 기록은 없다 — 장비만 가끔 돌아온다.",
+  },
 ];
 
 const DANGER_CLASS: Record<Zone["danger"], string> = {
@@ -174,6 +195,7 @@ export default function Content({ onLog, logs }: Props) {
               <span className="map-hud-pct">{progress.toFixed(1)}%</span>
             </div>
             <div className="map-hud-sub">{activeZoneData.location} · {activeZoneData.danger}</div>
+            <div className="map-hud-desc">{activeZoneData.desc}</div>
             <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>
           </div>
           {hudLogs.length > 0 && (
