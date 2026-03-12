@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
 import Modal from "./Modal";
-import type { LogEntry } from "../types/log";
+import { useGame } from "../context/GameContext";
 
 type Crumb = { label: string; key: string };
 
 const ROOT_CRUMBS: Crumb[] = [
-  { label: "지도",          key: "world" },
   { label: "키르타스 평원", key: "region" },
   { label: "야영지 3구역",  key: "zone" },
 ];
@@ -64,25 +63,7 @@ const DANGER_CLASS: Record<Zone["danger"], string> = {
   "극한": "danger--extreme",
 };
 
-const ITEM_TICK_MS      = 12_000;
-const PROGRESS_PER_ITEM = 1.5;
-const HUD_LOG_COUNT     = 4;
-
-const LOOT_POOL: LogEntry[] = [
-  { time: "", segments: [{ type: "highlight", text: "마나 결정(중급)" }, { type: "plain", text: " ×2 획득 — " }, { type: "reward", text: "+120 BSS 상당" }] },
-  { time: "", segments: [{ type: "plain", text: "폐허 탐색 중 " }, { type: "danger", text: "변이체(2단계) 조우" }, { type: "plain", text: " — 자동 회피 성공" }] },
-  { time: "", segments: [{ type: "highlight", text: "고대 유물 파편" }, { type: "plain", text: " 발견 — 유물 복원 스킬 적용 중" }] },
-  { time: "", segments: [{ type: "plain", text: "폐허 탐색 " }, { type: "good", text: "Lv.12 달성" }, { type: "plain", text: " — 탐색 속도 +5%" }] },
-  { time: "", segments: [{ type: "plain", text: "마나 결정(기본) ×3 획득 — " }, { type: "reward", text: "+45 BSS 상당" }] },
-  { time: "", segments: [{ type: "highlight", text: "잠긴 금고" }, { type: "plain", text: " 발견 — 해제 시도 중" }] },
-  { time: "", segments: [{ type: "plain", text: "구역 탐색 중 " }, { type: "danger", text: "마나 결정 폭발" }, { type: "plain", text: " 위험 감지 — 우회 경로 선택" }] },
-  { time: "", segments: [{ type: "plain", text: "고철 부품 ×5 획득 — " }, { type: "good", text: "유물 복원 경험치 +12" }] },
-];
-
-function nowHHMM() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+const HUD_LOG_COUNT = 4;
 
 function fmtElapsed(sec: number) {
   const h = Math.floor(sec / 3600);
@@ -91,98 +72,61 @@ function fmtElapsed(sec: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+export default function Content() {
+  const { state, dispatch, mapTickRef } = useGame();
+  const { currentAction, progress, logs } = state;
 
-type Props = {
-  onLog: (entry: LogEntry) => void;
-  logs: LogEntry[];
-};
+  const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null);
 
-export default function Content({ onLog, logs }: Props) {
-  const [activeZone,  setActiveZone]  = useState<string>("ruin-commercial");
-  const [elapsed,     setElapsed]     = useState(4 * 3600 + 32 * 60 + 17);
-  const [progress,    setProgress]    = useState(67);
-  const [zoneModal,   setZoneModal]   = useState<ZoneModalState | null>(null);
+  const activeZone     = currentAction.zoneId;
+  const activeZoneData = ZONES.find(z => z.id === activeZone)!;
+  const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
 
-  const tickFillRef  = useRef<HTMLDivElement>(null);
-  const lootIdx      = useRef(0);
-  const tickStart    = useRef(performance.now());
-  const elapsedStart = useRef(performance.now());
-  const rafId        = useRef(0);
-
-  useEffect(() => {
-    const tick = (now: number) => {
-      const elapsedDelta = now - elapsedStart.current;
-      if (elapsedDelta >= 1000) {
-        setElapsed(e => e + Math.floor(elapsedDelta / 1000));
-        elapsedStart.current = now - (elapsedDelta % 1000);
-      }
-
-      const sinceStart = now - tickStart.current;
-      const pct = Math.min(sinceStart / ITEM_TICK_MS, 1);
-      if (tickFillRef.current) tickFillRef.current.style.width = `${pct * 100}%`;
-
-      if (sinceStart >= ITEM_TICK_MS) {
-        const entry = { ...LOOT_POOL[lootIdx.current % LOOT_POOL.length], time: nowHHMM() };
-        lootIdx.current += 1;
-        onLog(entry);
-        setProgress(p => Math.min(100, +(p + PROGRESS_PER_ITEM).toFixed(1)));
-        tickStart.current = now;
-      }
-
-      rafId.current = requestAnimationFrame(tick);
-    };
-
-    rafId.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId.current);
-  }, []);
+  // elapsed: derived from createdAt (no state needed)
+  const elapsed = Math.floor((Date.now() - currentAction.createdAt) / 1000);
 
   const openZoneModal = (zone: Zone) => setZoneModal({ mode: "zone", zone });
-  const closeModal = () => setZoneModal(null);
+  const closeModal    = () => setZoneModal(null);
 
   const handleModalChoice = (choiceId: string) => {
     if (!zoneModal) return;
     if (zoneModal.mode === "zone") {
-      if (choiceId === "confirm") setActiveZone(zoneModal.zone.id);
+      if (choiceId === "confirm") dispatch({ type: 'CHANGE_ZONE', zoneId: zoneModal.zone.id });
       if (choiceId !== "inspect") closeModal();
       return;
     }
     closeModal();
   };
 
-  const hudLogs    = logs.slice(0, HUD_LOG_COUNT);
-  const crumbs     = ROOT_CRUMBS;
-  const activeZoneData = ZONES.find(z => z.id === activeZone)!;
-
   return (
     <div className="content">
       <div className="content-header">
         <div className="breadcrumb-row">
-          {crumbs.length > 1 && (
+          {ROOT_CRUMBS.length > 1 && (
             <button className="back-btn" title="뒤로">
               <ChevronLeft size={14} />
             </button>
           )}
           <nav className="breadcrumb">
-            {crumbs.map((c, i) => (
+            {ROOT_CRUMBS.map((c, i) => (
               <span key={c.key} className="breadcrumb-item">
-                {i < crumbs.length - 1 ? (
+                {i < ROOT_CRUMBS.length - 1 ? (
                   <button className="breadcrumb-link">{c.label}</button>
                 ) : (
                   <span className="breadcrumb-current">{c.label}</span>
                 )}
-                {i < crumbs.length - 1 && <span className="breadcrumb-sep">›</span>}
+                {i < ROOT_CRUMBS.length - 1 && <span className="breadcrumb-sep">›</span>}
               </span>
             ))}
           </nav>
-          <div className="page-sub" style={{ marginLeft: 'auto' }}>마나 농도 31% · 비교적 안전</div>
-        </div>
-        <div className="nearby-topbar">
-          <div className="top-avatar blue">◎</div>
-          <div className="top-avatar red">◈</div>
-          <div className="top-avatar white">◉</div>
-          <div className="top-avatar yellow">◆</div>
-          <div className="top-avatar blue">▣</div>
-          <div className="top-avatar-more">+29</div>
+          <div className="nearby-topbar">
+            <div className="top-avatar"><img src={avatar} alt="" /></div>
+            <div className="top-avatar"><img src={avatar} alt="" /></div>
+            <div className="top-avatar"><img src={avatar} alt="" /></div>
+            <div className="top-avatar"><img src={avatar} alt="" /></div>
+            <div className="top-avatar"><img src={avatar} alt="" /></div>
+            <div className="top-avatar-more">+29</div>
+          </div>
         </div>
       </div>
 
@@ -194,10 +138,11 @@ export default function Content({ onLog, logs }: Props) {
               <span className="map-hud-zone-name">{activeZoneData.name}</span>
               <span className="map-hud-pct">{progress.toFixed(1)}%</span>
             </div>
-            <div className="map-hud-sub">{activeZoneData.location} · {activeZoneData.danger}</div>
+            <div className="map-hud-sub">{activeZoneData.location} · {activeZoneData.danger} · 마나 농도 31%</div>
             <div className="map-hud-desc">{activeZoneData.desc}</div>
             <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>
           </div>
+
           {hudLogs.length > 0 && (
             <div className="map-hud-log">
               {[...hudLogs].reverse().map((entry, i) => {
@@ -216,11 +161,12 @@ export default function Content({ onLog, logs }: Props) {
                 );
               })}
               <div className="map-hud-tick-bar">
-                <div ref={tickFillRef} className="map-hud-tick-fill" />
+                <div ref={mapTickRef} className="map-hud-tick-fill" />
               </div>
             </div>
           )}
         </div>
+
         <div className="zone-list">
           {ZONES.map(z => {
             const isActive = z.id === activeZone;
@@ -244,11 +190,10 @@ export default function Content({ onLog, logs }: Props) {
                       <div className="progress-fill" style={{ width: `${progress}%` }} />
                     </div>
                     <div className="zone-row-badges" style={{ marginTop: 8 }}>
-                      <span className="badge badge--loot">◈ 마나 결정 ×{14 + lootIdx.current}</span>
+                      <span className="badge badge--loot">◈ 마나 결정 ×{14}</span>
                       <span className="badge badge--explore">▣ 탐색 {progress.toFixed(1)}%</span>
                       <span className={`badge badge--danger ${DANGER_CLASS[z.danger]}`}>{z.danger}</span>
                     </div>
-
                   </div>
                 ) : (
                   <div className="zone-row-info">

@@ -1,6 +1,7 @@
 import { Bell, MessageSquare } from 'lucide-react';
 import avatar from '../assets/image.png';
 import type { SidebarTab } from '../App';
+import { useGame } from '../context/GameContext';
 
 const NOTIF_COUNT = 3;
 
@@ -11,6 +12,9 @@ type Props = {
 };
 
 export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
+  const { state, globalBarRef } = useGame();
+  const { character, resources } = state;
+
   const isActive = (tab: SidebarTab) => sidebarOpen && activeTab === tab;
 
   return (
@@ -19,19 +23,19 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
         <div className="top-char-img">
           <img src={avatar} alt="Profile" />
         </div>
-        <span className="top-name">방랑자_카이 Lv.27</span>
+        <span className="top-name">{character.name} Lv.{character.level}</span>
       </div>
 
       <div className="top-spacer" />
 
-      <div className="top-stat-group">
-        <span className="top-res">◆ 14</span>
-        <span className="top-res">💎 2,340 BSS</span>
-      </div>
+      <span ref={globalBarRef} className="top-tick-indicator" />
 
       <div className="top-divider">|</div>
 
-      <div className="top-loc">키르타스 평원 3구역</div>
+      <div className="top-stat-group">
+        <span className="top-res">◆ {resources.manaStone}</span>
+        <span className="top-res">💎 {resources.bss.toLocaleString()}</span>
+      </div>
 
       <div className="top-divider">|</div>
 

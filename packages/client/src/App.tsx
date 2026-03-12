@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Topbar from './components/Topbar';
 import Content from './components/Content';
+import InventoryView from './components/InventoryView';
+import ProfileView from './components/ProfileView';
 import SidebarRight from './components/SidebarRight';
 import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
+import { GameProvider, useGame } from './context/GameContext';
 
-import { INITIAL_LOGS } from './types/log';
-import type { LogEntry } from './types/log';
 import type { TabbarTab } from './components/Tabbar';
 
 export type SidebarTab = 'notif' | 'chat';
@@ -16,22 +17,22 @@ const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX = 480;
 
 export default function App() {
+  return (
+    <GameProvider>
+      <AppLayout />
+    </GameProvider>
+  );
+}
+
+function AppLayout() {
+  const { globalBarRef } = useGame();
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab,   setActiveTab]   = useState<SidebarTab>('chat');
-  const [logs,        setLogs]        = useState<LogEntry[]>(INITIAL_LOGS);
   const [tabbarTab,   setTabbarTab]   = useState<TabbarTab>('map');
 
   const savedRightW = useRef(SIDEBAR_RIGHT_DEFAULT);
 
-  const handleLog = useCallback((entry: LogEntry) => {
-    setLogs(prev => [entry, ...prev].slice(0, 20));
-  }, []);
-
-  // Clicking a topbar icon:
-  //   closed             → open + switch tab
-  //   open + same tab    → close
-  //   open + other tab   → switch tab
   const handleTabClick = useCallback((tab: SidebarTab) => {
     setSidebarOpen(prev => {
       if (!prev) {
@@ -49,9 +50,9 @@ export default function App() {
     });
   }, [activeTab, rightW]);
 
-  const dragging  = useRef(false);
-  const startX    = useRef(0);
-  const startW    = useRef(0);
+  const dragging    = useRef(false);
+  const startX      = useRef(0);
+  const startW      = useRef(0);
   const appRightRef = useRef<HTMLDivElement>(null);
 
   const onMouseDown = useCallback(
@@ -96,8 +97,13 @@ export default function App() {
             activeTab={activeTab}
             onTabClick={handleTabClick}
           />
+          <div className="global-tick-bar">
+            <div ref={globalBarRef} className="global-tick-fill" />
+          </div>
           <div className="main">
-            <Content onLog={handleLog} logs={logs} />
+            {tabbarTab === 'map' && <Content />}
+            {tabbarTab === 'inventory' && <InventoryView />}
+            {tabbarTab === 'profile' && <ProfileView />}
           </div>
           <Tabbar activeTab={tabbarTab} onTabClick={setTabbarTab} />
         </div>
