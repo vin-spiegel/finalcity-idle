@@ -270,62 +270,59 @@ export default function Content() {
         )}
 
         {/* ── Depth 3: 소지역 상세 (맵 전체 교체) ── */}
-        {navView.depth === 3 && viewZone && (() => {
-          const isActive = viewZone.id === activeZone;
-          return (
-            <div className="zone-detail">
-              <div className="zone-detail-meta">
-                <span className="badge">Lv.{viewZone.lv}</span>
-                <span className="badge">◷ {viewZone.tickSec}s</span>
-                <span className={`badge badge--danger ${DANGER_CLASS[viewZone.danger]}`}>{viewZone.danger}</span>
-                {isActive && <span className="badge badge--active">탐색 중</span>}
-              </div>
-
-              <div className="zone-detail-art">
-                {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
-              </div>
-
-              <div className="zone-detail-desc">{viewZone.desc}</div>
-
-              <div className="zone-detail-actions">
-                {viewZone.actions.map(action => {
-                  const isCurrent = isActive && action.zoneId === activeZone;
-                  return (
-                    <button
-                      key={action.id}
-                      className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
-                      onClick={() => {
-                        if (action.zoneId && action.zoneId !== activeZone) {
-                          dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
-                        }
-                      }}
-                    >
-                      <span className="zone-action-label">
-                        {isCurrent ? "◉ " : "▶ "}{action.label}
-                      </span>
-                      <span className="zone-action-hint">{action.hint}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {isActive && (
-                <div className="zone-detail-status">
-                  <div className="zone-detail-status-row">
-                    <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
-                    <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
-                  </div>
-                  <div className="progress-bar zone-detail-progress-bar">
-                    <div className="progress-fill" style={{ width: `${progress}%` }} />
-                  </div>
-                  <div className="map-hud-tick-bar zone-detail-tick-bar">
-                    <div ref={mapTickRef} className="map-hud-tick-fill" />
-                  </div>
-                </div>
-              )}
+        {navView.depth === 3 && viewZone && (
+          <div className="zone-detail">
+            <div className="zone-detail-meta">
+              <span className="badge">Lv.{viewZone.lv}</span>
+              <span className="badge">◷ {viewZone.tickSec}s</span>
+              <span className={`badge badge--danger ${DANGER_CLASS[viewZone.danger]}`}>{viewZone.danger}</span>
+              {viewZone.id === activeZone && <span className="badge badge--active">탐색 중</span>}
             </div>
-          );
-        })()}
+
+            <div className="zone-detail-art">
+              {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
+            </div>
+
+            <div className="zone-detail-desc">{viewZone.desc}</div>
+
+            <div className="zone-detail-actions">
+              {viewZone.actions.map(action => {
+                const isCurrent = viewZone.id === activeZone && action.zoneId === activeZone;
+                return (
+                  <button
+                    key={action.id}
+                    className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
+                    onClick={() => {
+                      if (action.zoneId && action.zoneId !== activeZone) {
+                        dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
+                      }
+                    }}
+                  >
+                    <span className="zone-action-label">
+                      {isCurrent ? "◉ " : "▶ "}{action.label}
+                    </span>
+                    <span className="zone-action-hint">{action.hint}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {viewZone.id === activeZone && (
+              <div className="zone-detail-status">
+                <div className="zone-detail-status-row">
+                  <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
+                  <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
+                </div>
+                <div className="progress-bar zone-detail-progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="map-hud-tick-bar zone-detail-tick-bar">
+                  <div ref={mapTickRef} className="map-hud-tick-fill" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Depth 1: 대지역 목록 ── */}
         {navView.depth === 1 && (
