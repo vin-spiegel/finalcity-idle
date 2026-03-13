@@ -162,7 +162,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let rafId = 0;
 
-    const tick = (now: number) => {
+    const tick = () => {
+      const now           = Date.now();
       const action        = actionRef.current;
       const tickPeriodMs  = 1000 / action.speedPerSec;
       const msSinceStart  = now - action.createdAt;
