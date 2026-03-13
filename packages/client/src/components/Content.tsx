@@ -7,10 +7,29 @@ import { useGame } from "../context/GameContext";
 
 type Crumb = { label: string; key: string };
 
-const ROOT_CRUMBS: Crumb[] = [
-  { label: "키르타스 평원", key: "region" },
-  { label: "야영지 3구역",  key: "zone" },
+type NavView = { type: "world" } | { type: "region"; regionKey: string };
+
+type Region = {
+  key: string;
+  label: string;
+  lv: string;
+  danger: "안전" | "보통" | "위험" | "극한";
+  desc: string;
+};
+
+const REGIONS: Region[] = [
+  { key: "kirtas",           label: "키르타스 평원",    lv: "1–5",  danger: "보통", desc: "도시 붕괴 이후 폐허가 된 개척지. 낮은 위험도에도 마나 결정 채굴 가치가 높아 탐색대가 끊이지 않는다." },
+  { key: "red-canyon",       label: "붉은 협곡",        lv: "12",   danger: "위험", desc: "산화된 마나 층이 지층을 물들인 협곡. 균열 밀도가 높아 공간 왜곡이 빈번하게 발생한다." },
+  { key: "gray-plateau",     label: "회색 고원",        lv: "20",   danger: "위험", desc: "고대 문명 유적이 점재하는 불모지. 탐색 대원들의 실종률이 지역 평균의 세 배에 달한다." },
+  { key: "final-city-outer", label: "파이널 시티 외곽", lv: "30",   danger: "극한", desc: "도시 핵심부를 감싼 공허의 경계선. 이 선을 넘어 귀환한 탐색자의 기록은 없다." },
 ];
+
+const ZONE_REGION: Record<string, string> = {
+  "키르타스 평원":    "kirtas",
+  "붉은 협곡":        "red-canyon",
+  "회색 고원":        "gray-plateau",
+  "파이널 시티 외곽": "final-city-outer",
+};
 
 type Zone = {
   id: string;
@@ -77,10 +96,28 @@ export default function Content() {
   const { currentAction, progress, logs } = state;
 
   const [zoneModal, setZoneModal] = useState<ZoneModalState | null>(null);
+  const [navView, setNavView]   = useState<NavView>({ type: "region", regionKey: "kirtas" });
 
   const activeZone     = currentAction.zoneId;
   const activeZoneData = ZONES.find(z => z.id === activeZone)!;
   const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
+
+  const crumbs: Crumb[] = navView.type === "world"
+    ? [{ label: "세계 지도", key: "world" }]
+    : [
+        { label: "세계 지도", key: "world" },
+        { label: REGIONS.find(r => r.key === navView.regionKey)!.label, key: navView.regionKey },
+      ];
+
+  const goBack    = () => { if (navView.type === "region") setNavView({ type: "world" }); };
+  const navigateTo = (key: string) => {
+    if (key === "world") setNavView({ type: "world" });
+    else setNavView({ type: "region", regionKey: key });
+  };
+
+  const visibleZones = navView.type === "region"
+    ? ZONES.filter(z => ZONE_REGION[z.location] === navView.regionKey)
+    : ZONES;
 
   // elapsed: derived from createdAt (no state needed)
   const elapsed = Math.floor((Date.now() - currentAction.createdAt) / 1000);
@@ -102,20 +139,20 @@ export default function Content() {
     <div className="content">
       <div className="content-header">
         <div className="breadcrumb-row">
-          {ROOT_CRUMBS.length > 1 && (
-            <button className="back-btn" title="뒤로">
+          {crumbs.length > 1 && (
+            <button className="back-btn" title="뒤로" onClick={goBack}>
               <ChevronLeft size={14} />
             </button>
           )}
           <nav className="breadcrumb">
-            {ROOT_CRUMBS.map((c, i) => (
+            {crumbs.map((c, i) => (
               <span key={c.key} className="breadcrumb-item">
-                {i < ROOT_CRUMBS.length - 1 ? (
-                  <button className="breadcrumb-link">{c.label}</button>
+                {i < crumbs.length - 1 ? (
+                  <button className="breadcrumb-link" onClick={() => navigateTo(c.key)}>{c.label}</button>
                 ) : (
                   <span className="breadcrumb-current">{c.label}</span>
                 )}
-                {i < ROOT_CRUMBS.length - 1 && <span className="breadcrumb-sep">›</span>}
+                {i < crumbs.length - 1 && <span className="breadcrumb-sep">›</span>}
               </span>
             ))}
           </nav>
@@ -167,8 +204,25 @@ export default function Content() {
           )}
         </div>
 
+        {navView.type === "world" ? (
+          <div className="region-list">
+            {REGIONS.map(r => (
+              <div key={r.key} className="region-row" onClick={() => navigateTo(r.key)}>
+                <div className="region-row-info">
+                  <div className="region-row-name">{r.label}</div>
+                  <div className="zone-row-badges">
+                    <span className="badge">Lv.{r.lv}</span>
+                    <span className={`badge badge--danger ${DANGER_CLASS[r.danger]}`}>{r.danger}</span>
+                  </div>
+                  <div className="region-row-desc">{r.desc}</div>
+                </div>
+                <div className="zone-row-arrow">›</div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="zone-list">
-          {ZONES.map(z => {
+          {visibleZones.map(z => {
             const isActive = z.id === activeZone;
             return (
               <div
@@ -211,6 +265,7 @@ export default function Content() {
             );
           })}
         </div>
+        )}
       </div>
 
       {zoneModal && (
