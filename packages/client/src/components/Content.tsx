@@ -146,18 +146,18 @@ export default function Content() {
     ? LARGE_REGIONS.find(r => r.key === navView.regionKey)!
     : null;
 
-  // HUD content for depth 1 & 2
+  // HUD content for depth 1 & 2 (not evaluated at depth 3)
   const hudZoneName = isViewingActiveRegion
     ? activeZoneData.name
-    : navView.depth === 1 ? "세계 지도" : browsingRegion!.label;
+    : navView.depth === 1 ? "세계 지도" : (browsingRegion?.label ?? "");
   const hudSubLine  = isViewingActiveRegion
     ? `${activeZoneData.location} · ${activeZoneData.danger} · 마나 농도 31%`
-    : navView.depth === 1 ? "탐색 가능한 구역 4곳" : `Lv.${browsingRegion!.lv} · ${browsingRegion!.danger}`;
+    : navView.depth === 1 ? "탐색 가능한 구역 4곳" : `Lv.${browsingRegion?.lv ?? ""} · ${browsingRegion?.danger ?? ""}`;
   const hudDesc     = isViewingActiveRegion
     ? activeZoneData.desc
     : navView.depth === 1
       ? "지도를 탐색하여 다음 목적지를 선택하십시오."
-      : browsingRegion!.desc;
+      : (browsingRegion?.desc ?? "");
 
   // Breadcrumbs
   const crumbs: Crumb[] =
