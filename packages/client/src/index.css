@@ -898,48 +898,56 @@ body {
 
 /* ─── ZONE DETAIL (depth 3) ──────────────────────────────── */
 
-.zone-detail {
+/* 상단: map-preview-wrap 안을 꽉 채우는 오버레이 패널 */
+.zone-detail-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
-  background: var(--panel-deep);
+  background: rgba(11, 36, 36, 0.94);
 }
 
 .zone-detail-meta {
   display: flex;
   gap: 6px;
   padding: 7px 10px;
-  background: var(--panel);
+  background: rgba(0, 0, 0, 0.25);
   border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
 }
 
 .zone-detail-art {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   font-family: 'D2Coding', monospace;
   font-size: 22px;
   line-height: 1.5;
   letter-spacing: 0.12em;
   color: var(--cyan-dim);
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.35);
-  padding: 22px 16px;
-  text-align: center;
-  background: var(--panel-deep);
-  border-bottom: 1px solid var(--border-dim);
 }
 
 .zone-detail-desc {
   color: var(--text);
-  font-size: 11px;
-  line-height: 1.75;
-  padding: 12px 14px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border-dim);
+  font-size: 10px;
+  line-height: 1.7;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid var(--border-dim);
+  flex-shrink: 0;
 }
 
-/* ── Action buttons ── */
-
+/* 하단: nav-list와 동일한 위치/외곽선 */
 .zone-detail-actions {
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--border);
+  outline: 1px solid var(--border-dim);
+  outline-offset: 2px;
 }
 
 .zone-action-btn {

@@ -270,45 +270,19 @@ export default function Content() {
               )}
             </>
           ) : viewZone && (
-            /* Depth 3: ASCII 아트 오버레이 + 구역 HUD */
-            <>
-              <div className="zone-art-overlay">
+            /* Depth 3: 구역 상세 패널 (map-preview-wrap 안을 꽉 채움) */
+            <div className="zone-detail-panel">
+              <div className="zone-detail-meta">
+                <span className="badge">Lv.{viewZone.lv}</span>
+                <span className="badge">◷ {viewZone.tickSec}s</span>
+                <span className={`badge badge--danger ${DANGER_CLASS[viewZone.danger]}`}>{viewZone.danger}</span>
+                {viewZone.id === activeZone && <span className="badge badge--active">탐색 중</span>}
+              </div>
+              <div className="zone-detail-art">
                 {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
               </div>
-              <div className="map-hud-top">
-                <div className="map-hud-title-row">
-                  <span className="map-hud-zone-name">{viewZone.name}</span>
-                  {viewZone.id === activeZone && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
-                </div>
-                <div className="map-hud-sub">
-                  {viewZone.location} · {viewZone.danger} · Lv.{viewZone.lv} · ◷ {viewZone.tickSec}s
-                </div>
-                <div className="map-hud-desc">{viewZone.desc}</div>
-                {viewZone.id === activeZone && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
-              </div>
-              {viewZone.id === activeZone && hudLogs.length > 0 && (
-                <div className="map-hud-log">
-                  {[...hudLogs].reverse().map((entry, i) => {
-                    const age = hudLogs.length - 1 - i;
-                    return (
-                      <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                        <span className="log-time">{entry.time}</span>
-                        <span className="log-text">
-                          {entry.segments.map((seg, j) =>
-                            seg.type === "plain"
-                              ? <span key={j}>{seg.text}</span>
-                              : <span key={j} className={seg.type}>{seg.text}</span>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <div className="map-hud-tick-bar">
-                    <div ref={mapTickRef} className="map-hud-tick-fill" />
-                  </div>
-                </div>
-              )}
-            </>
+              <div className="zone-detail-desc">{viewZone.desc}</div>
+            </div>
           )}
         </div>
 
@@ -366,38 +340,40 @@ export default function Content() {
           </div>
         )}
 
-        {/* ── Depth 3: 액션 목록 (nav-list 동일 스타일) ── */}
+        {/* ── Depth 3: 액션 버튼 (zone-detail-actions) ── */}
         {navView.depth === 3 && viewZone && (
-          <div className="nav-list">
+          <div className="zone-detail-actions">
             {viewZone.actions.map(action => {
               const isCurrent = viewZone.id === activeZone && action.zoneId === activeZone;
               return (
-                <div
+                <button
                   key={action.id}
-                  className={`nav-row${isCurrent ? " nav-row--active" : ""}`}
+                  className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
                   onClick={() => {
                     if (action.zoneId && action.zoneId !== activeZone) {
                       dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
                     }
                   }}
                 >
-                  <div className="nav-row-info">
-                    <div className="nav-row-name">
-                      {isCurrent ? "◉ " : "▶ "}{action.label}
-                    </div>
-                    <div className="nav-row-badges">
-                      <span className="badge">{action.hint}</span>
-                    </div>
-                    {isCurrent && (
-                      <div className="progress-bar" style={{ marginTop: 6 }}>
-                        <div className="progress-fill" style={{ width: `${progress}%` }} />
-                      </div>
-                    )}
-                  </div>
-                  {!isCurrent && <div className="nav-row-arrow">›</div>}
-                </div>
+                  <span className="zone-action-label">{isCurrent ? "◉ " : "▶ "}{action.label}</span>
+                  <span className="zone-action-hint">{action.hint}</span>
+                </button>
               );
             })}
+            {viewZone.id === activeZone && (
+              <div className="zone-detail-status">
+                <div className="zone-detail-status-row">
+                  <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
+                  <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
+                </div>
+                <div className="progress-bar zone-detail-progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+                <div className="map-hud-tick-bar zone-detail-tick-bar">
+                  <div ref={mapTickRef} className="map-hud-tick-fill" />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
