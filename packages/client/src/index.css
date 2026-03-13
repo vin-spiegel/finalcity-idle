@@ -876,6 +876,130 @@ body {
 
 /* ── Nav List (Depth 1 & 2) ─────────────────────────────────── */
 
+/* ─── ZONE DETAIL (depth 3) ──────────────────────────────── */
+
+.zone-detail {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  background: var(--panel-deep);
+}
+
+.zone-detail-meta {
+  display: flex;
+  gap: 6px;
+  padding: 7px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.zone-detail-art {
+  font-family: 'D2Coding', monospace;
+  font-size: 22px;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  color: var(--cyan-dim);
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.35);
+  padding: 22px 16px;
+  text-align: center;
+  background: var(--panel-deep);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.zone-detail-desc {
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.75;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border-dim);
+}
+
+/* ── Action buttons ── */
+
+.zone-detail-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.zone-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 14px 16px;
+  background: var(--panel-deep);
+  border: none;
+  border-bottom: 1px solid var(--border-dim);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+}
+.zone-action-btn:last-child { border-bottom: none; }
+
+.zone-action-btn:hover {
+  background: var(--panel);
+}
+.zone-action-btn:active {
+  background: var(--bg);
+}
+
+.zone-action-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.zone-action-btn--primary .zone-action-label { color: var(--cyan); }
+.zone-action-btn--neutral  .zone-action-label { color: var(--text); }
+.zone-action-btn--current  .zone-action-label { color: var(--green); }
+
+.zone-action-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  padding-left: 18px;
+}
+
+/* ── Active-zone status bar ── */
+
+.zone-detail-status {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border-dim);
+}
+
+.zone-detail-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.zone-detail-elapsed {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.zone-detail-pct {
+  color: var(--amber-dim);
+  font-size: 11px;
+}
+
+.zone-detail-progress-bar {
+  margin: 0;
+}
+
+.zone-detail-tick-bar {
+  height: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  margin: 0 -14px;
+}
+
+/* ─── NAV LIST ──────────────────────────────────────────────── */
+
 .nav-list {
   display: flex;
   flex-direction: column;

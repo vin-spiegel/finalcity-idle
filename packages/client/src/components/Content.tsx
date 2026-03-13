@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
-import Modal from "./Modal";
 import { useGame } from "../context/GameContext";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -11,7 +10,8 @@ type Crumb = { label: string; key: string };
 
 type NavView =
   | { depth: 1 }
-  | { depth: 2; regionKey: string };
+  | { depth: 2; regionKey: string }
+  | { depth: 3; regionKey: string; zoneId: string };
 
 type DangerLevel = "안전" | "보통" | "위험" | "극한";
 
@@ -20,13 +20,13 @@ type ZoneAction = {
   label:  string;
   hint:   string;
   tone:   "primary" | "neutral";
-  zoneId?: string; // dispatch CHANGE_ZONE if set
+  zoneId?: string;
 };
 
 type SubZone = {
   id:        string;
   name:      string;
-  location:  string; // display string for HUD
+  location:  string;
   regionKey: string;
   lv:        number;
   tickSec:   number;
@@ -132,22 +132,21 @@ export default function Content() {
   const { state, dispatch, mapTickRef } = useGame();
   const { currentAction, progress, logs } = state;
 
-  const [navView, setNavView]   = useState<NavView>({ depth: 2, regionKey: "kirtas" });
-  const [zoneModal, setZoneModal] = useState<SubZone | null>(null);
+  const [navView, setNavView] = useState<NavView>({ depth: 2, regionKey: "kirtas" });
 
   const activeZone     = currentAction.zoneId;
   const activeZoneData = SUBZONES.find(z => z.id === activeZone)!;
   const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
   const elapsed        = Math.floor((Date.now() - currentAction.createdAt) / 1000);
 
-  // View context
-  const viewKey               = navView.depth === 1 ? "world" : navView.regionKey;
+  // View context (depth 1 & 2 only — depth 3 replaces map entirely)
+  const viewKey               = navView.depth === 3 ? navView.regionKey : navView.depth === 1 ? "world" : navView.regionKey;
   const isViewingActiveRegion = navView.depth === 2 && navView.regionKey === activeZoneData.regionKey;
   const browsingRegion        = navView.depth === 2
     ? LARGE_REGIONS.find(r => r.key === navView.regionKey)!
     : null;
 
-  // HUD content — reflects browsed area, not always active zone
+  // HUD content for depth 1 & 2
   const hudZoneName = isViewingActiveRegion
     ? activeZoneData.name
     : navView.depth === 1 ? "세계 지도" : browsingRegion!.label;
@@ -161,27 +160,40 @@ export default function Content() {
       : browsingRegion!.desc;
 
   // Breadcrumbs
-  const crumbs: Crumb[] = navView.depth === 1
-    ? [{ label: "세계 지도", key: "world" }]
-    : [
-        { label: "세계 지도", key: "world" },
-        { label: LARGE_REGIONS.find(r => r.key === navView.regionKey)!.label, key: navView.regionKey },
-      ];
+  const crumbs: Crumb[] =
+    navView.depth === 1
+      ? [{ label: "세계 지도", key: "world" }]
+      : navView.depth === 2
+        ? [
+            { label: "세계 지도", key: "world" },
+            { label: LARGE_REGIONS.find(r => r.key === navView.regionKey)!.label, key: navView.regionKey },
+          ]
+        : [
+            { label: "세계 지도", key: "world" },
+            { label: LARGE_REGIONS.find(r => r.key === navView.regionKey)!.label, key: navView.regionKey },
+            { label: SUBZONES.find(z => z.id === navView.zoneId)!.name, key: navView.zoneId },
+          ];
 
-  const goBack     = () => { if (navView.depth === 2) setNavView({ depth: 1 }); };
+  const goBack = () => {
+    if (navView.depth === 3) setNavView({ depth: 2, regionKey: navView.regionKey });
+    else if (navView.depth === 2) setNavView({ depth: 1 });
+  };
+
   const navigateTo = (key: string) => {
     if (key === "world") setNavView({ depth: 1 });
-    else setNavView({ depth: 2, regionKey: key });
+    else {
+      const isZone = SUBZONES.some(z => z.id === key);
+      if (isZone) {
+        const zone = SUBZONES.find(z => z.id === key)!;
+        setNavView({ depth: 3, regionKey: zone.regionKey, zoneId: key });
+      } else {
+        setNavView({ depth: 2, regionKey: key });
+      }
+    }
   };
 
-  const handleModalChoice = (choiceId: string) => {
-    if (!zoneModal) return;
-    const action = zoneModal.actions.find(a => a.id === choiceId);
-    if (action?.zoneId && action.zoneId !== activeZone) {
-      dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
-    }
-    setZoneModal(null);
-  };
+  // Depth 3: zone being viewed
+  const viewZone = navView.depth === 3 ? SUBZONES.find(z => z.id === navView.zoneId)! : null;
 
   return (
     <div className="content">
@@ -217,43 +229,103 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── 상단 맵 미리보기 (항상 표시) ── */}
-        <div className="map-preview-wrap" data-view={viewKey}>
-          <img src={mapPreview} alt="구역 지도" className="map-preview" />
-          <div className="map-region-tint" />
-          <div className="map-hud-top">
-            <div className="map-hud-title-row">
-              <span className="map-hud-zone-name">{hudZoneName}</span>
-              {isViewingActiveRegion && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
-            </div>
-            <div className="map-hud-sub">{hudSubLine}</div>
-            <div className="map-hud-desc">{hudDesc}</div>
-            {isViewingActiveRegion && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
-          </div>
-
-          {isViewingActiveRegion && hudLogs.length > 0 && (
-            <div className="map-hud-log">
-              {[...hudLogs].reverse().map((entry, i) => {
-                const age = hudLogs.length - 1 - i;
-                return (
-                  <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                    <span className="log-time">{entry.time}</span>
-                    <span className="log-text">
-                      {entry.segments.map((seg, j) =>
-                        seg.type === "plain"
-                          ? <span key={j}>{seg.text}</span>
-                          : <span key={j} className={seg.type}>{seg.text}</span>
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-              <div className="map-hud-tick-bar">
-                <div ref={mapTickRef} className="map-hud-tick-fill" />
+        {/* ── Depth 1 & 2: 맵 미리보기 ── */}
+        {navView.depth !== 3 && (
+          <div className="map-preview-wrap" data-view={viewKey}>
+            <img src={mapPreview} alt="구역 지도" className="map-preview" />
+            <div className="map-region-tint" />
+            <div className="map-hud-top">
+              <div className="map-hud-title-row">
+                <span className="map-hud-zone-name">{hudZoneName}</span>
+                {isViewingActiveRegion && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
               </div>
+              <div className="map-hud-sub">{hudSubLine}</div>
+              <div className="map-hud-desc">{hudDesc}</div>
+              {isViewingActiveRegion && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
             </div>
-          )}
-        </div>
+
+            {isViewingActiveRegion && hudLogs.length > 0 && (
+              <div className="map-hud-log">
+                {[...hudLogs].reverse().map((entry, i) => {
+                  const age = hudLogs.length - 1 - i;
+                  return (
+                    <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
+                      <span className="log-time">{entry.time}</span>
+                      <span className="log-text">
+                        {entry.segments.map((seg, j) =>
+                          seg.type === "plain"
+                            ? <span key={j}>{seg.text}</span>
+                            : <span key={j} className={seg.type}>{seg.text}</span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div className="map-hud-tick-bar">
+                  <div ref={mapTickRef} className="map-hud-tick-fill" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Depth 3: 소지역 상세 (맵 전체 교체) ── */}
+        {navView.depth === 3 && viewZone && (() => {
+          const isActive = viewZone.id === activeZone;
+          return (
+            <div className="zone-detail">
+              <div className="zone-detail-meta">
+                <span className="badge">Lv.{viewZone.lv}</span>
+                <span className="badge">◷ {viewZone.tickSec}s</span>
+                <span className={`badge badge--danger ${DANGER_CLASS[viewZone.danger]}`}>{viewZone.danger}</span>
+                {isActive && <span className="badge badge--active">탐색 중</span>}
+              </div>
+
+              <div className="zone-detail-art">
+                {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
+              </div>
+
+              <div className="zone-detail-desc">{viewZone.desc}</div>
+
+              <div className="zone-detail-actions">
+                {viewZone.actions.map(action => {
+                  const isCurrent = isActive && action.zoneId === activeZone;
+                  return (
+                    <button
+                      key={action.id}
+                      className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
+                      onClick={() => {
+                        if (action.zoneId && action.zoneId !== activeZone) {
+                          dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
+                        }
+                      }}
+                    >
+                      <span className="zone-action-label">
+                        {isCurrent ? "◉ " : "▶ "}{action.label}
+                      </span>
+                      <span className="zone-action-hint">{action.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isActive && (
+                <div className="zone-detail-status">
+                  <div className="zone-detail-status-row">
+                    <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
+                    <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
+                  </div>
+                  <div className="progress-bar zone-detail-progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress}%` }} />
+                  </div>
+                  <div className="map-hud-tick-bar zone-detail-tick-bar">
+                    <div ref={mapTickRef} className="map-hud-tick-fill" />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Depth 1: 대지역 목록 ── */}
         {navView.depth === 1 && (
@@ -283,7 +355,7 @@ export default function Content() {
                 <div
                   key={z.id}
                   className={`nav-row${isActive ? " nav-row--active" : ""}`}
-                  onClick={() => setZoneModal(z)}
+                  onClick={() => setNavView({ depth: 3, regionKey: z.regionKey, zoneId: z.id })}
                 >
                   <div className="nav-row-art">
                     {z.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
@@ -310,30 +382,6 @@ export default function Content() {
         )}
 
       </div>
-
-      {zoneModal && (
-        <Modal
-          isOpen={true}
-          imageSrc={avatar}
-          imageAlt={zoneModal.name}
-          label={zoneModal.name}
-          sublabel={`${zoneModal.location} · Lv.${zoneModal.lv} · ${zoneModal.danger}`}
-          dividerLabel="구역 진입"
-          body={[zoneModal.desc]}
-          choices={[
-            ...zoneModal.actions.map(a => ({
-              id:   a.id,
-              label: a.label,
-              hint:  a.hint,
-              tone:  a.tone as "primary" | "neutral",
-            })),
-            { id: "cancel", label: "취소", hint: "현재 구역 유지", tone: "danger" as const },
-          ]}
-          onClose={() => setZoneModal(null)}
-          onChoice={(choice) => handleModalChoice(choice.id)}
-          closeOnOverlayClick={true}
-        />
-      )}
     </div>
   );
 }
