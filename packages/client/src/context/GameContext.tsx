@@ -89,6 +89,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         currentAction: { ...state.currentAction, zoneId: action.zoneId, createdAt: Date.now() },
+        logs: [],
+        progress: 0,
       };
     case 'ADD_LOG':
       return { ...state, logs: [action.entry, ...state.logs].slice(0, 20) };
@@ -152,6 +154,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { actionRef.current   = state.currentAction; }, [state.currentAction]);
   useEffect(() => { progressRef.current = state.progress;      }, [state.progress]);
+  useEffect(() => { awardedRef.current  = 0;                   }, [state.currentAction.zoneId]);
 
   const dispatchStable = useCallback(dispatch, []);
   const providerValue = useMemo(
