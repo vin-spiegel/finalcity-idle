@@ -645,6 +645,41 @@ body {
   display: block;
   width: 100%;
   image-rendering: pixelated;
+  transition: filter 0.5s ease;
+}
+
+/* ── Region tint overlay ── */
+.map-region-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: background 0.5s ease;
+}
+
+.map-preview-wrap[data-view="world"] .map-region-tint {
+  background: linear-gradient(135deg, rgba(0, 255, 255, 0.06) 0%, transparent 55%);
+}
+.map-preview-wrap[data-view="kirtas"] .map-region-tint {
+  background: linear-gradient(135deg, rgba(0, 220, 100, 0.10) 0%, transparent 55%);
+}
+.map-preview-wrap[data-view="red-canyon"] .map-region-tint {
+  background: linear-gradient(135deg, rgba(255, 80, 20, 0.16) 0%, transparent 55%);
+}
+.map-preview-wrap[data-view="red-canyon"] .map-preview {
+  filter: hue-rotate(340deg) saturate(130%);
+}
+.map-preview-wrap[data-view="gray-plateau"] .map-region-tint {
+  background: linear-gradient(135deg, rgba(160, 160, 160, 0.12) 0%, transparent 55%);
+}
+.map-preview-wrap[data-view="gray-plateau"] .map-preview {
+  filter: grayscale(55%) brightness(0.9);
+}
+.map-preview-wrap[data-view="final-city-outer"] .map-region-tint {
+  background: linear-gradient(135deg, rgba(130, 0, 255, 0.22) 0%, transparent 55%);
+}
+.map-preview-wrap[data-view="final-city-outer"] .map-preview {
+  filter: hue-rotate(220deg) saturate(140%) brightness(0.85);
 }
 
 .map-hud-top {
@@ -655,6 +690,7 @@ body {
   padding: 8px 10px 14px;
   background: linear-gradient(to bottom, rgba(7, 18, 18, 0.55) 60%, transparent);
   pointer-events: none;
+  z-index: 2;
 }
 
 .map-hud-nearby {
@@ -729,6 +765,7 @@ body {
 .map-hud-log {
   position: absolute;
   bottom: 0;
+  z-index: 2;
   left: 0;
   right: 0;
   padding: 6px 10px 0;

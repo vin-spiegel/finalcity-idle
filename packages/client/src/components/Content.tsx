@@ -140,6 +140,26 @@ export default function Content() {
   const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
   const elapsed        = Math.floor((Date.now() - currentAction.createdAt) / 1000);
 
+  // View context
+  const viewKey               = navView.depth === 1 ? "world" : navView.regionKey;
+  const isViewingActiveRegion = navView.depth === 2 && navView.regionKey === activeZoneData.regionKey;
+  const browsingRegion        = navView.depth === 2
+    ? LARGE_REGIONS.find(r => r.key === navView.regionKey)!
+    : null;
+
+  // HUD content — reflects browsed area, not always active zone
+  const hudZoneName = isViewingActiveRegion
+    ? activeZoneData.name
+    : navView.depth === 1 ? "세계 지도" : browsingRegion!.label;
+  const hudSubLine  = isViewingActiveRegion
+    ? `${activeZoneData.location} · ${activeZoneData.danger} · 마나 농도 31%`
+    : navView.depth === 1 ? "탐색 가능한 구역 4곳" : `Lv.${browsingRegion!.lv} · ${browsingRegion!.danger}`;
+  const hudDesc     = isViewingActiveRegion
+    ? activeZoneData.desc
+    : navView.depth === 1
+      ? "지도를 탐색하여 다음 목적지를 선택하십시오."
+      : browsingRegion!.desc;
+
   // Breadcrumbs
   const crumbs: Crumb[] = navView.depth === 1
     ? [{ label: "세계 지도", key: "world" }]
@@ -198,19 +218,20 @@ export default function Content() {
       <div className="content-body">
 
         {/* ── 상단 맵 미리보기 (항상 표시) ── */}
-        <div className="map-preview-wrap">
+        <div className="map-preview-wrap" data-view={viewKey}>
           <img src={mapPreview} alt="구역 지도" className="map-preview" />
+          <div className="map-region-tint" />
           <div className="map-hud-top">
             <div className="map-hud-title-row">
-              <span className="map-hud-zone-name">{activeZoneData.name}</span>
-              <span className="map-hud-pct">{progress.toFixed(1)}%</span>
+              <span className="map-hud-zone-name">{hudZoneName}</span>
+              {isViewingActiveRegion && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
             </div>
-            <div className="map-hud-sub">{activeZoneData.location} · {activeZoneData.danger} · 마나 농도 31%</div>
-            <div className="map-hud-desc">{activeZoneData.desc}</div>
-            <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>
+            <div className="map-hud-sub">{hudSubLine}</div>
+            <div className="map-hud-desc">{hudDesc}</div>
+            {isViewingActiveRegion && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
           </div>
 
-          {hudLogs.length > 0 && (
+          {isViewingActiveRegion && hudLogs.length > 0 && (
             <div className="map-hud-log">
               {[...hudLogs].reverse().map((entry, i) => {
                 const age = hudLogs.length - 1 - i;
