@@ -229,100 +229,88 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── Depth 1 & 2: 맵 미리보기 ── */}
-        {navView.depth !== 3 && (
-          <div className="map-preview-wrap" data-view={viewKey}>
-            <img src={mapPreview} alt="구역 지도" className="map-preview" />
-            <div className="map-region-tint" />
-            <div className="map-hud-top">
-              <div className="map-hud-title-row">
-                <span className="map-hud-zone-name">{hudZoneName}</span>
-                {isViewingActiveRegion && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
+        {/* ── 맵 미리보기 (항상 동일 크기) ── */}
+        <div className="map-preview-wrap" data-view={viewKey}>
+          <img src={mapPreview} alt="구역 지도" className="map-preview" />
+          <div className="map-region-tint" />
+
+          {navView.depth !== 3 ? (
+            /* Depth 1 & 2: 일반 HUD */
+            <>
+              <div className="map-hud-top">
+                <div className="map-hud-title-row">
+                  <span className="map-hud-zone-name">{hudZoneName}</span>
+                  {isViewingActiveRegion && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
+                </div>
+                <div className="map-hud-sub">{hudSubLine}</div>
+                <div className="map-hud-desc">{hudDesc}</div>
+                {isViewingActiveRegion && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
               </div>
-              <div className="map-hud-sub">{hudSubLine}</div>
-              <div className="map-hud-desc">{hudDesc}</div>
-              {isViewingActiveRegion && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
-            </div>
-
-            {isViewingActiveRegion && hudLogs.length > 0 && (
-              <div className="map-hud-log">
-                {[...hudLogs].reverse().map((entry, i) => {
-                  const age = hudLogs.length - 1 - i;
-                  return (
-                    <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                      <span className="log-time">{entry.time}</span>
-                      <span className="log-text">
-                        {entry.segments.map((seg, j) =>
-                          seg.type === "plain"
-                            ? <span key={j}>{seg.text}</span>
-                            : <span key={j} className={seg.type}>{seg.text}</span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-                <div className="map-hud-tick-bar">
-                  <div ref={mapTickRef} className="map-hud-tick-fill" />
+              {isViewingActiveRegion && hudLogs.length > 0 && (
+                <div className="map-hud-log">
+                  {[...hudLogs].reverse().map((entry, i) => {
+                    const age = hudLogs.length - 1 - i;
+                    return (
+                      <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
+                        <span className="log-time">{entry.time}</span>
+                        <span className="log-text">
+                          {entry.segments.map((seg, j) =>
+                            seg.type === "plain"
+                              ? <span key={j}>{seg.text}</span>
+                              : <span key={j} className={seg.type}>{seg.text}</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="map-hud-tick-bar">
+                    <div ref={mapTickRef} className="map-hud-tick-fill" />
+                  </div>
                 </div>
+              )}
+            </>
+          ) : viewZone && (
+            /* Depth 3: ASCII 아트 오버레이 + 구역 HUD */
+            <>
+              <div className="zone-art-overlay">
+                {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Depth 3: 소지역 상세 (맵 전체 교체) ── */}
-        {navView.depth === 3 && viewZone && (
-          <div className="zone-detail">
-            <div className="zone-detail-meta">
-              <span className="badge">Lv.{viewZone.lv}</span>
-              <span className="badge">◷ {viewZone.tickSec}s</span>
-              <span className={`badge badge--danger ${DANGER_CLASS[viewZone.danger]}`}>{viewZone.danger}</span>
-              {viewZone.id === activeZone && <span className="badge badge--active">탐색 중</span>}
-            </div>
-
-            <div className="zone-detail-art">
-              {viewZone.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
-            </div>
-
-            <div className="zone-detail-desc">{viewZone.desc}</div>
-
-            <div className="zone-detail-actions">
-              {viewZone.actions.map(action => {
-                const isCurrent = viewZone.id === activeZone && action.zoneId === activeZone;
-                return (
-                  <button
-                    key={action.id}
-                    className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
-                    onClick={() => {
-                      if (action.zoneId && action.zoneId !== activeZone) {
-                        dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
-                      }
-                    }}
-                  >
-                    <span className="zone-action-label">
-                      {isCurrent ? "◉ " : "▶ "}{action.label}
-                    </span>
-                    <span className="zone-action-hint">{action.hint}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {viewZone.id === activeZone && (
-              <div className="zone-detail-status">
-                <div className="zone-detail-status-row">
-                  <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
-                  <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
+              <div className="map-hud-top">
+                <div className="map-hud-title-row">
+                  <span className="map-hud-zone-name">{viewZone.name}</span>
+                  {viewZone.id === activeZone && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
                 </div>
-                <div className="progress-bar zone-detail-progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }} />
+                <div className="map-hud-sub">
+                  {viewZone.location} · {viewZone.danger} · Lv.{viewZone.lv} · ◷ {viewZone.tickSec}s
                 </div>
-                <div className="map-hud-tick-bar zone-detail-tick-bar">
-                  <div ref={mapTickRef} className="map-hud-tick-fill" />
-                </div>
+                <div className="map-hud-desc">{viewZone.desc}</div>
+                {viewZone.id === activeZone && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
               </div>
-            )}
-          </div>
-        )}
+              {viewZone.id === activeZone && hudLogs.length > 0 && (
+                <div className="map-hud-log">
+                  {[...hudLogs].reverse().map((entry, i) => {
+                    const age = hudLogs.length - 1 - i;
+                    return (
+                      <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
+                        <span className="log-time">{entry.time}</span>
+                        <span className="log-text">
+                          {entry.segments.map((seg, j) =>
+                            seg.type === "plain"
+                              ? <span key={j}>{seg.text}</span>
+                              : <span key={j} className={seg.type}>{seg.text}</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="map-hud-tick-bar">
+                    <div ref={mapTickRef} className="map-hud-tick-fill" />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* ── Depth 1: 대지역 목록 ── */}
         {navView.depth === 1 && (
@@ -372,6 +360,41 @@ export default function Content() {
                     )}
                   </div>
                   <div className="nav-row-arrow">›</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Depth 3: 액션 목록 (nav-list 동일 스타일) ── */}
+        {navView.depth === 3 && viewZone && (
+          <div className="nav-list">
+            {viewZone.actions.map(action => {
+              const isCurrent = viewZone.id === activeZone && action.zoneId === activeZone;
+              return (
+                <div
+                  key={action.id}
+                  className={`nav-row${isCurrent ? " nav-row--active" : ""}`}
+                  onClick={() => {
+                    if (action.zoneId && action.zoneId !== activeZone) {
+                      dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
+                    }
+                  }}
+                >
+                  <div className="nav-row-info">
+                    <div className="nav-row-name">
+                      {isCurrent ? "◉ " : "▶ "}{action.label}
+                    </div>
+                    <div className="nav-row-badges">
+                      <span className="badge">{action.hint}</span>
+                    </div>
+                    {isCurrent && (
+                      <div className="progress-bar" style={{ marginTop: 6 }}>
+                        <div className="progress-fill" style={{ width: `${progress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                  {!isCurrent && <div className="nav-row-arrow">›</div>}
                 </div>
               );
             })}

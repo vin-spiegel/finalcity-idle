@@ -648,6 +648,26 @@ body {
   transition: filter 0.5s ease;
 }
 
+/* ── Zone ASCII art overlay (depth 3) ── */
+.zone-art-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  font-family: 'D2Coding', monospace;
+  font-size: 26px;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(0, 255, 255, 0.55);
+  text-align: center;
+  background: rgba(7, 18, 18, 0.6);
+  padding: 18px 28px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+
 /* ── Region tint overlay ── */
 .map-region-tint {
   position: absolute;
