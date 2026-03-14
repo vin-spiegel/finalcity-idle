@@ -5,6 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(API_BASE + path, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...opts,
   });
   const json: ApiResponse<T> = await res.json();
@@ -47,21 +48,24 @@ export const api = {
   fetchSectors: () =>
     req<SectorRow[]>('/zones/sectors'),
 
-  createUser: (username: string) =>
-    req<UserRow>('/user', { method: 'POST', body: JSON.stringify({ username }) }),
+  getMe: () =>
+    req<UserRow>('/user/me'),
 
-  startExploration: (userId: number, sectorId: string) =>
+  getResources: () =>
+    req<Record<string, number>>('/user/me/resources'),
+
+  startExploration: (sectorId: string) =>
     req<{ sectorId: string; startedAt: string }>('/exploration/start', {
       method: 'POST',
-      body: JSON.stringify({ userId, sectorId }),
+      body: JSON.stringify({ sectorId }),
     }),
 
-  syncExploration: (userId: number) =>
-    req<SyncResult>('/exploration/sync', {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
-    }),
+  syncExploration: () =>
+    req<SyncResult>('/exploration/sync', { method: 'POST', body: '{}' }),
 
-  getStatus: (userId: number) =>
-    req<ExplorationStatus>(`/exploration/status?userId=${userId}`),
+  stopExploration: () =>
+    req<null>('/exploration/stop', { method: 'POST', body: '{}' }),
+
+  getStatus: () =>
+    req<ExplorationStatus>('/exploration/status'),
 };

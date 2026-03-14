@@ -2,11 +2,30 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import api from "./routes/api.js";
+import { auth } from "./lib/auth.js";
 
 const app = new Hono();
 
 app.use("*", logger());
+app.use(
+  "*",
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      process.env.BETTER_AUTH_URL ?? "",
+    ],
+    allowHeaders:     ["Content-Type", "Authorization"],
+    allowMethods:     ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    exposeHeaders:    ["Set-Cookie"],
+    credentials:      true,
+  }),
+);
+
+// better-auth handles all /api/auth/* routes
+app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/api", api);
 

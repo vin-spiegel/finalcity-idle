@@ -1,38 +1,25 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { users, userResources, userJobs, userStats } from "../db/schema.js";
+import { users, userResources, userJobs } from "../db/schema.js";
+import { requireAuth } from "../middleware/auth.js";
+import type { AppEnv } from "../types.js";
 
-const user = new Hono();
+const user = new Hono<AppEnv>();
 
-// POST /api/user  { username }  — local dev only, no auth
-user.post("/", async (c) => {
-  const { username } = await c.req.json<{ username: string }>();
+// GET /api/user/me — current user (from session)
+user.get("/me", requireAuth, async (c) => {
+  const userId = c.get("userId");
 
-  const [existing] = await db.select().from(users).where(eq(users.username, username));
-  if (existing) return c.json({ success: true, data: existing });
-
-  const [created] = await db.insert(users).values({ username }).returning();
-
-  // Init stats row
-  await db.insert(userStats).values({ userId: created.id }).onConflictDoNothing();
-
-  return c.json({ success: true, data: created }, 201);
-});
-
-// GET /api/user/:id
-user.get("/:id", async (c) => {
-  const id = Number(c.req.param("id"));
-
-  const [u] = await db.select().from(users).where(eq(users.id, id));
+  const [u] = await db.select().from(users).where(eq(users.id, userId));
   if (!u) return c.json({ success: false, error: "not found" }, 404);
 
   return c.json({ success: true, data: u });
 });
 
-// GET /api/user/:id/resources
-user.get("/:id/resources", async (c) => {
-  const userId = Number(c.req.param("id"));
+// GET /api/user/me/resources
+user.get("/me/resources", requireAuth, async (c) => {
+  const userId = c.get("userId");
 
   const rows = await db
     .select()
@@ -43,9 +30,9 @@ user.get("/:id/resources", async (c) => {
   return c.json({ success: true, data: resources });
 });
 
-// GET /api/user/:id/jobs
-user.get("/:id/jobs", async (c) => {
-  const userId = Number(c.req.param("id"));
+// GET /api/user/me/jobs
+user.get("/me/jobs", requireAuth, async (c) => {
+  const userId = c.get("userId");
 
   const rows = await db
     .select()

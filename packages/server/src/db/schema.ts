@@ -10,6 +10,54 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 
+// ─── Auth (better-auth managed tables) ───────────────────────────────────────
+
+export const authUser = pgTable("user", {
+  id:            text("id").primaryKey(),
+  name:          text("name").notNull(),
+  email:         text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image:         text("image"),
+  createdAt:     timestamp("created_at").notNull().defaultNow(),
+  updatedAt:     timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const authSession = pgTable("session", {
+  id:        text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token:     text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId:    text("user_id").notNull().references(() => authUser.id, { onDelete: "cascade" }),
+});
+
+export const authAccount = pgTable("account", {
+  id:                    text("id").primaryKey(),
+  accountId:             text("account_id").notNull(),
+  providerId:            text("provider_id").notNull(),
+  userId:                text("user_id").notNull().references(() => authUser.id, { onDelete: "cascade" }),
+  accessToken:           text("access_token"),
+  refreshToken:          text("refresh_token"),
+  idToken:               text("id_token"),
+  accessTokenExpiresAt:  timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope:                 text("scope"),
+  password:              text("password"),
+  createdAt:             timestamp("created_at").notNull().defaultNow(),
+  updatedAt:             timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const authVerification = pgTable("verification", {
+  id:         text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value:      text("value").notNull(),
+  expiresAt:  timestamp("expires_at").notNull(),
+  createdAt:  timestamp("created_at").defaultNow(),
+  updatedAt:  timestamp("updated_at").defaultNow(),
+});
+
 // ─── Static game data ────────────────────────────────────────────────────────
 
 export const sectors = pgTable("sectors", {
@@ -35,11 +83,12 @@ export type DropEntry = {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export const users = pgTable("users", {
-  id:             serial("id").primaryKey(),
-  username:       text("username").notNull().unique(),
-  level:          integer("level").notNull().default(1),
-  createdAt:      timestamp("created_at").notNull().defaultNow(),
-  lastSyncedAt:   timestamp("last_synced_at").notNull().defaultNow(),
+  id:           serial("id").primaryKey(),
+  authId:       text("auth_id").unique().references(() => authUser.id),
+  username:     text("username").notNull().unique(),
+  level:        integer("level").notNull().default(1),
+  createdAt:    timestamp("created_at").notNull().defaultNow(),
+  lastSyncedAt: timestamp("last_synced_at").notNull().defaultNow(),
 });
 
 export const userResources = pgTable("user_resources", {
@@ -57,22 +106,22 @@ export const userJobs = pgTable("user_jobs", {
 }, (t) => [primaryKey({ columns: [t.userId, t.jobType] })]);
 
 export const userStats = pgTable("user_stats", {
-  userId:     integer("user_id").notNull().primaryKey().references(() => users.id),
-  detection:  integer("detection").notNull().default(0),
-  manaSense:  integer("mana_sense").notNull().default(0),
-  vitality:   integer("vitality").notNull().default(10),
-  crafting:   integer("crafting").notNull().default(0),
+  userId:    integer("user_id").notNull().primaryKey().references(() => users.id),
+  detection: integer("detection").notNull().default(0),
+  manaSense: integer("mana_sense").notNull().default(0),
+  vitality:  integer("vitality").notNull().default(10),
+  crafting:  integer("crafting").notNull().default(0),
 });
 
 // ─── Exploration ─────────────────────────────────────────────────────────────
 
 export const userExploration = pgTable("user_exploration", {
-  userId:      integer("user_id").notNull().primaryKey().references(() => users.id),
-  sectorId:    text("sector_id").notNull().references(() => sectors.id),
-  progress:    real("progress").notNull().default(0),   // 0–100
-  startedAt:   timestamp("started_at").notNull().defaultNow(),
-  lastTickAt:  timestamp("last_tick_at").notNull().defaultNow(),
-  isFarming:   boolean("is_farming").notNull().default(false), // true after 100%
+  userId:     integer("user_id").notNull().primaryKey().references(() => users.id),
+  sectorId:   text("sector_id").notNull().references(() => sectors.id),
+  progress:   real("progress").notNull().default(0),   // 0–100
+  startedAt:  timestamp("started_at").notNull().defaultNow(),
+  lastTickAt: timestamp("last_tick_at").notNull().defaultNow(),
+  isFarming:  boolean("is_farming").notNull().default(false), // true after 100%
 });
 
 // ─── Logs ────────────────────────────────────────────────────────────────────

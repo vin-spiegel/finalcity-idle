@@ -7,6 +7,7 @@ import SidebarRight from './components/SidebarRight';
 import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider, useGame } from './context/GameContext';
+import { authClient } from './lib/auth-client';
 
 import type { TabbarTab } from './components/Tabbar';
 
@@ -17,10 +18,44 @@ const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX = 480;
 
 export default function App() {
+  const [session, setSession] = useState<{ user: { name: string; email: string } } | null | undefined>(undefined);
+
+  useEffect(() => {
+    authClient.getSession().then(({ data }) => {
+      setSession(data?.session ? (data as { user: { name: string; email: string } }) : null);
+    });
+  }, []);
+
+  if (session === undefined) return null; // loading
+
+  if (!session) return <LoginScreen />;
+
   return (
     <GameProvider>
       <AppLayout />
     </GameProvider>
+  );
+}
+
+function LoginScreen() {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+  };
+
+  return (
+    <div className="login-screen">
+      <div className="login-box">
+        <div className="login-title">FINAL CITY</div>
+        <div className="login-subtitle">파이널 시티</div>
+        <button className="login-btn" onClick={handleLogin} disabled={loading}>
+          {loading ? '연결 중…' : 'Google로 로그인'}
+        </button>
+      </div>
+      <CRTOverlay />
+    </div>
   );
 }
 
