@@ -1,7 +1,9 @@
 type ApiResponse<T> = { success: true; data: T } | { success: false; error: string };
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch('/api' + path, {
+  const res = await fetch(API_BASE + path, {
     headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
