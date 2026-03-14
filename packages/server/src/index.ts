@@ -1,4 +1,3 @@
-try { process.loadEnvFile(new URL("../../.env", import.meta.url).pathname); } catch {}
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
