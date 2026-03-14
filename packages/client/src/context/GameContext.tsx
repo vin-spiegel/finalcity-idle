@@ -53,7 +53,7 @@ const INITIAL_STATE: GameState = {
   character:     { name: '방랑자_카이', level: 27, hp: 450, maxHp: 500, exp: 12500, maxExp: 34000 },
   resources:     { manaStone: 14, bss: 2340 },
   currentAction: {
-    zoneId:      'ruin-commercial',
+    zoneId:      'camp3-commercial',
     createdAt:   Date.now() - (4 * 3600 + 32 * 60 + 17) * 1000,
     speedPerSec: 1 / 12, // 12s tick
   },

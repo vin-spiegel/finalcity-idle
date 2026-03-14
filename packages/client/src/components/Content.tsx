@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
 import { useGame } from "../context/GameContext";
+import { api, type SectorRow } from "../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -44,70 +45,13 @@ type LargeRegion = {
   desc:   string;
 };
 
-// ─── Data ─────────────────────────────────────────────────────
+// ─── Static data ──────────────────────────────────────────────
 
 const LARGE_REGIONS: LargeRegion[] = [
   { key: "kirtas",           label: "키르타스 평원",    lv: "1–5",  danger: "보통", desc: "도시 붕괴 이후 폐허가 된 개척지. 낮은 위험도에도 마나 결정 채굴 가치가 높아 탐색대가 끊이지 않는다." },
   { key: "red-canyon",       label: "붉은 협곡",        lv: "12",   danger: "위험", desc: "산화된 마나 층이 지층을 물들인 협곡. 균열 밀도가 높아 공간 왜곡이 빈번하게 발생한다." },
   { key: "gray-plateau",     label: "회색 고원",        lv: "20",   danger: "위험", desc: "고대 문명 유적이 점재하는 불모지. 탐색 대원들의 실종률이 지역 평균의 세 배에 달한다." },
   { key: "final-city-outer", label: "파이널 시티 외곽", lv: "30",   danger: "극한", desc: "도시 핵심부를 감싼 공허의 경계선. 이 선을 넘어 귀환한 탐색자의 기록은 없다." },
-];
-
-const SUBZONES: SubZone[] = [
-  {
-    id: "ruin-commercial", name: "상업 구획 폐건물",
-    location: "키르타스 평원", regionKey: "kirtas",
-    lv: 1, tickSec: 12, danger: "안전",
-    art: "░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░",
-    desc: "도시가 숨을 거두던 날에도 간판은 켜져 있었다. 마나 결정이 균열 사이로 자라나고 있지만, 아직 거스름돈을 기다리는 카운터가 남아 있다.",
-    actions: [
-      { id: "explore",  label: "탐색 시작",  hint: "12초 간격 · 마나 결정 채굴",   tone: "primary", zoneId: "ruin-commercial" },
-      { id: "scavenge", label: "구석 뒤지기", hint: "저급 부품 발견 확률 +15%",     tone: "neutral" },
-    ],
-  },
-  {
-    id: "ruin-factory", name: "구 제조 공장 지하",
-    location: "키르타스 평원", regionKey: "kirtas",
-    lv: 5, tickSec: 18, danger: "보통",
-    art: "▒░▒▓▒░▒\n░▓████▓░\n▓██▓███▓\n░▓████▓░\n▒░▒▓▒░▒",
-    desc: "가동 정지 명령을 받지 못한 기계들이 지하 3층에서 아직 무언가를 찍어내고 있다. 순환회는 생산물의 정체를 공개하지 않는다.",
-    actions: [
-      { id: "explore",   label: "탐색 시작",  hint: "18초 간격 · 고철 부품",        tone: "primary", zoneId: "ruin-factory" },
-      { id: "dismantle", label: "기계 해체",   hint: "기술 경험치 +12",              tone: "neutral" },
-    ],
-  },
-  {
-    id: "mana-rift", name: "마나 균열 지대",
-    location: "붉은 협곡", regionKey: "red-canyon",
-    lv: 12, tickSec: 25, danger: "위험",
-    art: "░▒░▓░▒░\n▒▓▒█▒▓▒\n▓█▓▓▓█▓\n▒▓▒█▒▓▒\n░▒░▓░▒░",
-    desc: "현실의 막이 얇아져 빛이 비틀린다. 순환회 공식 관측 기록에서 이 구역의 좌표는 세 번 삭제되었다.",
-    actions: [
-      { id: "explore", label: "탐색 시작",  hint: "25초 간격 · 마나 결정(중급)",   tone: "primary", zoneId: "mana-rift" },
-      { id: "mine",    label: "결정 채굴",   hint: "채굴량 ×1.5 — 위험도 상승",     tone: "neutral" },
-    ],
-  },
-  {
-    id: "ancient-lab", name: "고대 연구소 잔해",
-    location: "회색 고원", regionKey: "gray-plateau",
-    lv: 20, tickSec: 35, danger: "위험",
-    art: "▓▒░▒░▒▓\n▒▓▒▓▒▓▒\n░▒▓███▒░\n▒▓▒▓▒▓▒\n▓▒░▒░▒▓",
-    desc: "데이터는 지워졌으나 피실험체는 남아 있다. 연구 목적은 끝내 밝혀지지 않았고, 여기선 아무것도 자연사하지 않는다.",
-    actions: [
-      { id: "explore",  label: "탐색 시작",  hint: "35초 간격 · 고대 유물 파편",    tone: "primary", zoneId: "ancient-lab" },
-      { id: "excavate", label: "유물 발굴",   hint: "희귀 아이템 발견 확률 +30%",    tone: "neutral" },
-    ],
-  },
-  {
-    id: "void-sector", name: "공허 구역 심층부",
-    location: "파이널 시티 외곽", regionKey: "final-city-outer",
-    lv: 30, tickSec: 50, danger: "극한",
-    art: "█▓▒░▒▓█\n▓█▓▒▓█▓\n▒▓█▓█▓▒\n▓█▓▒▓█▓\n█▓▒░▒▓█",
-    desc: "도시의 끝에서 공허가 시작된다. 이 지점을 지나 귀환한 탐색자의 기록은 없다 — 장비만 가끔 돌아온다.",
-    actions: [
-      { id: "explore", label: "탐색 시작", hint: "50초 간격 · 공허 파편", tone: "primary", zoneId: "void-sector" },
-    ],
-  },
 ];
 
 const DANGER_CLASS: Record<DangerLevel, string> = {
@@ -119,11 +63,37 @@ const DANGER_CLASS: Record<DangerLevel, string> = {
 
 const HUD_LOG_COUNT = 4;
 
+// ─── Helpers ──────────────────────────────────────────────────
+
 function fmtElapsed(sec: number) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function sectorToSubZone(s: SectorRow): SubZone {
+  const region = LARGE_REGIONS.find(r => r.key === s.regionKey);
+  return {
+    id:        s.id,
+    name:      s.name,
+    location:  region?.label ?? s.regionKey,
+    regionKey: s.regionKey,
+    lv:        s.levelReq,
+    tickSec:   s.tickSec,
+    danger:    s.dangerLevel as DangerLevel,
+    art:       s.art,
+    desc:      s.desc,
+    actions: [
+      {
+        id:     "explore",
+        label:  "탐색 시작",
+        hint:   `${s.tickSec}초 간격`,
+        tone:   "primary",
+        zoneId: s.id,
+      },
+    ],
+  };
 }
 
 // ─── Component ────────────────────────────────────────────────
@@ -132,29 +102,35 @@ export default function Content() {
   const { state, dispatch, mapTickRef } = useGame();
   const { currentAction, progress, logs } = state;
 
+  const [subzones, setSubzones] = useState<SubZone[]>([]);
+
+  useEffect(() => {
+    api.fetchSectors().then(rows => setSubzones(rows.map(sectorToSubZone)));
+  }, []);
+
   const [navView, setNavView] = useState<NavView>({ depth: 2, regionKey: "kirtas" });
 
   const activeZone     = currentAction.zoneId;
-  const activeZoneData = SUBZONES.find(z => z.id === activeZone)!;
+  const activeZoneData = subzones.find(z => z.id === activeZone) ?? subzones[0];
   const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
   const elapsed        = Math.floor((Date.now() - currentAction.createdAt) / 1000);
 
   // View context (depth 1 & 2 only — depth 3 replaces map entirely)
   const viewKey               = navView.depth === 3 ? navView.regionKey : navView.depth === 1 ? "world" : navView.regionKey;
-  const isViewingActiveRegion = navView.depth === 2 && navView.regionKey === activeZoneData.regionKey;
+  const isViewingActiveRegion = navView.depth === 2 && activeZoneData != null && navView.regionKey === activeZoneData.regionKey;
   const browsingRegion        = navView.depth === 2
     ? LARGE_REGIONS.find(r => r.key === navView.regionKey)!
     : null;
 
   // HUD content for depth 1 & 2 (not evaluated at depth 3)
   const hudZoneName = isViewingActiveRegion
-    ? activeZoneData.name
+    ? activeZoneData!.name
     : navView.depth === 1 ? "세계 지도" : (browsingRegion?.label ?? "");
   const hudSubLine  = isViewingActiveRegion
-    ? `${activeZoneData.location} · ${activeZoneData.danger} · 마나 농도 31%`
+    ? `${activeZoneData!.location} · ${activeZoneData!.danger} · 마나 농도 31%`
     : navView.depth === 1 ? "탐색 가능한 구역 4곳" : `Lv.${browsingRegion?.lv ?? ""} · ${browsingRegion?.danger ?? ""}`;
   const hudDesc     = isViewingActiveRegion
-    ? activeZoneData.desc
+    ? activeZoneData!.desc
     : navView.depth === 1
       ? "지도를 탐색하여 다음 목적지를 선택하십시오."
       : (browsingRegion?.desc ?? "");
@@ -171,7 +147,7 @@ export default function Content() {
         : [
             { label: "세계 지도", key: "world" },
             { label: LARGE_REGIONS.find(r => r.key === navView.regionKey)!.label, key: navView.regionKey },
-            { label: SUBZONES.find(z => z.id === navView.zoneId)!.name, key: navView.zoneId },
+            { label: subzones.find(z => z.id === navView.zoneId)?.name ?? "", key: navView.zoneId },
           ];
 
   const goBack = () => {
@@ -182,9 +158,8 @@ export default function Content() {
   const navigateTo = (key: string) => {
     if (key === "world") setNavView({ depth: 1 });
     else {
-      const isZone = SUBZONES.some(z => z.id === key);
-      if (isZone) {
-        const zone = SUBZONES.find(z => z.id === key)!;
+      const zone = subzones.find(z => z.id === key);
+      if (zone) {
         setNavView({ depth: 3, regionKey: zone.regionKey, zoneId: key });
       } else {
         setNavView({ depth: 2, regionKey: key });
@@ -193,7 +168,7 @@ export default function Content() {
   };
 
   // Depth 3: zone being viewed
-  const viewZone = navView.depth === 3 ? SUBZONES.find(z => z.id === navView.zoneId)! : null;
+  const viewZone = navView.depth === 3 ? subzones.find(z => z.id === navView.zoneId) ?? null : null;
 
   return (
     <div className="content">
@@ -304,7 +279,7 @@ export default function Content() {
         {/* ── Depth 2: 소지역 목록 ── */}
         {navView.depth === 2 && (
           <div className="nav-list">
-            {SUBZONES.filter(z => z.regionKey === navView.regionKey).map(z => {
+            {subzones.filter(z => z.regionKey === navView.regionKey).map(z => {
               const isActive = z.id === activeZone;
               return (
                 <div

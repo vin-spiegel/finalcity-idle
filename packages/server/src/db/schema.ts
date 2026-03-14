@@ -15,12 +15,15 @@ import {
 export const sectors = pgTable("sectors", {
   id:           text("id").primaryKey(),          // e.g. "camp3-commercial"
   zoneId:       text("zone_id").notNull(),         // e.g. "camp3"
+  regionKey:    text("region_key").notNull().default(""), // e.g. "kirtas"
   name:         text("name").notNull(),
   levelReq:     integer("level_req").notNull().default(1),
   tickSec:      integer("tick_sec").notNull(),
   dangerLevel:  text("danger_level").notNull(),    // "안전"|"보통"|"위험"|"극한"
   jobType:      text("job_type").notNull(),        // "searcher"|"scholar"|"technician"|"trader"
   dropTable:    jsonb("drop_table").notNull().$type<DropEntry[]>(),
+  art:          text("art").notNull().default(""),
+  desc:         text("desc").notNull().default(""),
 });
 
 export type DropEntry = {
