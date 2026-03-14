@@ -141,8 +141,17 @@ function nowHHMM() {
 
 // ─── Provider ────────────────────────────────────────────────
 
-export function GameProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE);
+type GameProviderProps = {
+  children: ReactNode;
+  username?: string;
+  level?: number;
+};
+
+export function GameProvider({ children, username, level }: GameProviderProps) {
+  const init: GameState = username
+    ? { ...INITIAL_STATE, character: { ...INITIAL_STATE.character, name: username, level: level ?? 1 } }
+    : INITIAL_STATE;
+  const [state, dispatch] = useReducer(gameReducer, init);
 
   const globalBarRef = useRef<HTMLDivElement>(null);
   const mapTickRef   = useRef<HTMLDivElement>(null);

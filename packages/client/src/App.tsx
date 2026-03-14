@@ -8,6 +8,7 @@ import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider, useGame } from './context/GameContext';
 import { authClient } from './lib/auth-client';
+import { api, type UserRow } from './lib/api';
 
 import type { TabbarTab } from './components/Tabbar';
 
@@ -18,20 +19,27 @@ const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX = 480;
 
 export default function App() {
-  const [session, setSession] = useState<{ user: { name: string; email: string } } | null | undefined>(undefined);
+  const [ready,    setReady]    = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [gameUser, setGameUser] = useState<UserRow | null>(null);
 
   useEffect(() => {
-    authClient.getSession().then(({ data }) => {
-      setSession(data?.session ? (data as { user: { name: string; email: string } }) : null);
+    authClient.getSession().then(async ({ data }) => {
+      if (data?.session) {
+        const user = await api.getMe().catch(() => null);
+        setGameUser(user);
+        setLoggedIn(true);
+      }
+      setReady(true);
     });
   }, []);
 
-  if (session === undefined) return null; // loading
+  if (!ready) return null;
 
-  if (!session) return <LoginScreen />;
+  if (!loggedIn) return <LoginScreen />;
 
   return (
-    <GameProvider>
+    <GameProvider username={gameUser?.username} level={gameUser?.level}>
       <AppLayout />
     </GameProvider>
   );
