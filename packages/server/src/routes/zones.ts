@@ -5,6 +5,27 @@ import { sectors } from "../db/schema.js";
 
 const zones = new Hono();
 
+// GET /api/sectors — all sectors (for client bootstrap)
+zones.get("/sectors", async (c) => {
+  const rows = await db
+    .select({
+      id:          sectors.id,
+      zoneId:      sectors.zoneId,
+      regionKey:   sectors.regionKey,
+      name:        sectors.name,
+      levelReq:    sectors.levelReq,
+      tickSec:     sectors.tickSec,
+      dangerLevel: sectors.dangerLevel,
+      jobType:     sectors.jobType,
+      art:         sectors.art,
+      desc:        sectors.desc,
+    })
+    .from(sectors)
+    .orderBy(sectors.levelReq);
+
+  return c.json({ success: true, data: rows });
+});
+
 // GET /api/zones — distinct zone list
 zones.get("/", async (c) => {
   const rows = await db
