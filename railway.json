@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter shared build && pnpm --filter client build && pnpm --filter server build && cp -r packages/client/dist packages/server/dist/public"
+  },
+  "deploy": {
+    "startCommand": "cd packages/server && node dist/index.js"
+  }
+}
