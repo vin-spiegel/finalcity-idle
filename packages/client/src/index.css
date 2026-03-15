@@ -201,6 +201,21 @@ body {
 
 .top-spacer { flex: 1; }
 
+.top-action-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 14px;
+  font-size: 11px;
+  opacity: 0.85;
+  overflow: hidden;
+  max-width: 220px;
+}
+.top-action-dot   { color: var(--cyan); font-size: 8px; flex-shrink: 0; }
+.top-action-label { color: var(--cyan-dim); flex-shrink: 0; }
+.top-action-sep   { color: var(--border); flex-shrink: 0; }
+.top-action-zone  { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .top-res { color: var(--magenta-dim); margin-left: 16px; }
 .top-res:first-child { margin-left: 0; }
 
