@@ -6,7 +6,7 @@ import ProfileView from './components/ProfileView';
 import SidebarRight from './components/SidebarRight';
 import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
-import { GameProvider, useGame } from './context/GameContext';
+import { GameProvider } from './context/GameContext';
 import { authClient } from './lib/auth-client';
 import { api, type UserRow, type ExplorationStatus, type ZoneRow } from './lib/api';
 
