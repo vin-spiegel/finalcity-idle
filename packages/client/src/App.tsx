@@ -7,7 +7,10 @@ import SidebarRight from './components/SidebarRight';
 import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider } from './context/GameContext';
-import bgm from './assets/audio/Dunes of the Fifth Moon.mp3';
+import bgm0 from './assets/audio/Dunes of the Fifth Moon.mp3';
+import bgm1 from './assets/audio/Dunes of the Fifth Moon (1).mp3';
+
+const BGM_PLAYLIST = [bgm0, bgm1];
 import { authClient } from './lib/auth-client';
 import { api, type UserRow, type ExplorationStatus, type ZoneRow } from './lib/api';
 
@@ -143,12 +146,25 @@ function LoginScreen() {
 
 function AppLayout() {
   useEffect(() => {
-    const audio = new Audio(bgm);
-    audio.loop = true;
+    const playlist = [...BGM_PLAYLIST].sort(() => Math.random() - 0.5);
+    let idx = 0;
+    const audio = new Audio(playlist[0]);
     audio.volume = 0.4;
+
+    const playNext = () => {
+      idx = (idx + 1) % playlist.length;
+      audio.src = playlist[idx];
+      audio.play().catch(() => {});
+    };
+    audio.addEventListener('ended', playNext);
+
     const play = () => { audio.play().catch(() => {}); };
     document.addEventListener('click', play, { once: true });
-    return () => { document.removeEventListener('click', play); audio.pause(); };
+    return () => {
+      document.removeEventListener('click', play);
+      audio.removeEventListener('ended', playNext);
+      audio.pause();
+    };
   }, []);
 
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
