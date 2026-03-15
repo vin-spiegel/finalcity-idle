@@ -10,7 +10,7 @@ import {
   type RefObject,
 } from 'react';
 import type { LogEntry } from '../types/log';
-import { api, type ExplorationStatus } from '../lib/api';
+import { api, type ExplorationStatus, type ZoneRow } from '../lib/api';
 
 // ─── Server shape ────────────────────────────────────────────
 
@@ -131,6 +131,7 @@ type GameContextValue = {
   dispatch:      React.Dispatch<GameAction>;
   globalBarRef:  RefObject<HTMLDivElement | null>;
   mapTickRef:    RefObject<HTMLDivElement | null>;
+  zones:         ZoneRow[];
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -164,14 +165,15 @@ function nowHHMM() {
 // ─── Provider ────────────────────────────────────────────────
 
 type GameProviderProps = {
-  children:       ReactNode;
-  username?:      string;
-  level?:         number;
-  initialStatus?: ExplorationStatus;
+  children:          ReactNode;
+  username?:         string;
+  level?:            number;
+  initialStatus?:    ExplorationStatus;
   initialResources?: Record<string, number>;
+  initialZones?:     ZoneRow[];
 };
 
-export function GameProvider({ children, username, level, initialStatus, initialResources }: GameProviderProps) {
+export function GameProvider({ children, username, level, initialStatus, initialResources, initialZones }: GameProviderProps) {
   let init: GameState = {
     ...INITIAL_STATE,
     character: username
@@ -208,8 +210,8 @@ export function GameProvider({ children, username, level, initialStatus, initial
   const dispatchStable = useCallback(dispatch, []);
 
   const providerValue = useMemo(
-    () => ({ state, dispatch, globalBarRef, mapTickRef }),
-    [state, dispatch],
+    () => ({ state, dispatch, globalBarRef, mapTickRef, zones: initialZones ?? [] }),
+    [state, dispatch, initialZones],
   );
 
   // ── RAF: tick bar animation only ──────────────────────────

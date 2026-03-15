@@ -3,7 +3,8 @@ import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
 import { useGame } from "../context/GameContext";
-import { api, type ZoneRow } from "../lib/api";
+import { api } from "../lib/api";
+import type { ZoneRow } from "../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -80,17 +81,14 @@ function findLeaf(roots: ZoneNode[], id: string): ZoneNode | null {
 // ─── Component ────────────────────────────────────────────────
 
 export default function Content() {
-  const { state, dispatch, mapTickRef } = useGame();
+  const { state, dispatch, mapTickRef, zones: zoneRows } = useGame();
   const { currentAction, progress, logs } = state;
 
-  const [roots,        setRoots]        = useState<ZoneNode[]>([]);
-  const [zonesLoading, setZonesLoading] = useState(true);
+  const [roots, setRoots] = useState<ZoneNode[]>([]);
 
   useEffect(() => {
-    api.fetchZones()
-      .then(rows => setRoots(buildTree(rows)))
-      .finally(() => setZonesLoading(false));
-  }, []);
+    if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
+  }, [zoneRows]);
 
   // path = list of zone IDs navigated into (excludes "world" root)
   const [path, setPath] = useState<string[]>([]);
@@ -213,7 +211,7 @@ export default function Content() {
 
         {/* ── Zone 리스트 ── */}
         <div className="nav-list">
-          {zonesLoading ? (
+          {roots.length === 0 ? (
             <>
               {[0.9, 0.65, 0.75, 0.55].map((w, i) => (
                 <div key={i} className="nav-row nav-row--skeleton">

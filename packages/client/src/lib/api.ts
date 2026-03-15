@@ -50,6 +50,7 @@ export type InitResult = {
   user:      UserRow | null;
   status:    ExplorationStatus;
   resources: Record<string, number>;
+  zones:     ZoneRow[];
 };
 
 export const api = {

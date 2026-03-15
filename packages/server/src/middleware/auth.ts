@@ -6,15 +6,21 @@ import { users } from "../db/schema.js";
 import type { AppEnv } from "../types.js";
 
 export async function requireAuth(c: Context<AppEnv>, next: Next) {
+  const t0 = Date.now();
+
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) {
     return c.json({ success: false, error: "Unauthorized" }, 401);
   }
+  const t1 = Date.now();
 
   const [gameUser] = await db
     .select()
     .from(users)
     .where(eq(users.authId, session.user.id));
+  const t2 = Date.now();
+
+  console.log(`[auth] getSession=${t1 - t0}ms usersLookup=${t2 - t1}ms`);
 
   if (!gameUser) {
     return c.json({ success: false, error: "Game user not found" }, 404);

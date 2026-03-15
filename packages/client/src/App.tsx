@@ -8,7 +8,7 @@ import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider, useGame } from './context/GameContext';
 import { authClient } from './lib/auth-client';
-import { api, type UserRow, type ExplorationStatus } from './lib/api';
+import { api, type UserRow, type ExplorationStatus, type ZoneRow } from './lib/api';
 
 import type { TabbarTab } from './components/Tabbar';
 
@@ -24,14 +24,16 @@ export default function App() {
   const [gameUser,         setGameUser]         = useState<UserRow | null>(null);
   const [initialStatus,    setInitialStatus]    = useState<ExplorationStatus>(null);
   const [initialResources, setInitialResources] = useState<Record<string, number>>({});
+  const [initialZones,     setInitialZones]     = useState<ZoneRow[]>([]);
 
   useEffect(() => {
-    // Single roundtrip: auth check + user + status + resources
+    // Single roundtrip: auth check + user + status + resources + zones
     api.init()
-      .then(({ user, status, resources }) => {
+      .then(({ user, status, resources, zones }) => {
         setGameUser(user);
         setInitialStatus(status);
         setInitialResources(resources);
+        setInitialZones(zones);
         setLoggedIn(true);
       })
       .catch(() => {
@@ -52,6 +54,7 @@ export default function App() {
       level={gameUser?.level}
       initialStatus={initialStatus}
       initialResources={initialResources}
+      initialZones={initialZones}
     >
       <AppLayout />
     </GameProvider>
