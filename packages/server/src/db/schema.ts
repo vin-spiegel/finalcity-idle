@@ -126,13 +126,3 @@ export const userExploration = pgTable("user_exploration", {
   isFarming:  boolean("is_farming").notNull().default(false),
 });
 
-// ─── Logs ────────────────────────────────────────────────────────────────────
-
-export const explorationLogs = pgTable("exploration_logs", {
-  id:        serial("id").primaryKey(),
-  userId:    integer("user_id").notNull().references(() => users.id),
-  zoneId:    text("zone_id").notNull().references(() => zones.id),
-  eventType: text("event_type").notNull(), // "resource"|"job_up"|"event"
-  data:      jsonb("data").notNull().$type<Record<string, unknown>>(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
