@@ -106,8 +106,8 @@ export default function Content() {
   const topLevel    = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
   const children    = currentNode ? currentNode.children : topLevel;
 
-  // Map HUD: show active zone if exploring, else browsed node
-  const showActiveHud  = activeLeaf != null && state.isExploring;
+  // Map HUD: only show active exploration overlay when viewing the active leaf
+  const showActiveHud  = activeLeaf != null && state.isExploring && currentNode?.id === activeZone;
   const hudZoneName    = showActiveHud ? activeLeaf!.name : (currentNode?.name ?? "세계 지도");
   const hudSubLine     = showActiveHud
     ? `${activeLeaf!.desc.slice(0, 40)}…`
