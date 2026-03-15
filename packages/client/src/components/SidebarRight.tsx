@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { SidebarTab } from '../App';
 
 // ── Notifications ────────────────────────────────────────
@@ -11,13 +10,10 @@ const NOTIFS = [
 
 // ── Chat ─────────────────────────────────────────────────
 
-type ChannelTab = string;
-type MsgColor   = 'blue' | 'red' | 'white' | 'yellow' | 'brown';
-type ChatMsg    =
+type MsgColor = 'blue' | 'red' | 'white' | 'yellow' | 'brown';
+type ChatMsg  =
   | { type: 'system'; text: string }
   | { type: 'msg'; name: string; color: MsgColor; time: string; body: string };
-
-const CHANNEL_TABS: ChannelTab[] = ['공용', '야영지', '순환회', '적야', '카르자트'];
 
 const MESSAGES: ChatMsg[] = [
   { type: 'system', text: '═══ 마나 폭풍 경보 발령 — 북서 방향 ═══' },
@@ -43,7 +39,6 @@ type Props = {
 };
 
 export default function SidebarRight({ activeTab }: Props) {
-  const [channel, setChannel] = useState('공용');
 
   return (
     <div className="sidebar-right">
@@ -90,19 +85,8 @@ export default function SidebarRight({ activeTab }: Props) {
           </div>
 
           <div className="chat-input-area">
-            <div className="channel-tabs">
-              {CHANNEL_TABS.map(label => (
-                <button
-                  key={label}
-                  className={`ch-tab${channel === label ? ' active' : ''}`}
-                  onClick={() => setChannel(label)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             <div className="input-row">
-              <input className="chat-input" placeholder={`메시지 입력... (${channel} 채널)`} />
+              <input className="chat-input" placeholder="메시지 입력..." />
               <button className="send-btn">전송</button>
             </div>
           </div>
