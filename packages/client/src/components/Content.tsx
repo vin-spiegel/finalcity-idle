@@ -90,8 +90,7 @@ export default function Content() {
   }, []);
 
   // path = list of zone IDs navigated into (excludes "world" root)
-  const [path,       setPath]       = useState<string[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [path, setPath] = useState<string[]>([]);
 
   const activeZone     = currentAction.zoneId;
   const activeLeaf     = findLeaf(roots, activeZone);
@@ -100,7 +99,8 @@ export default function Content() {
 
   // Current node being browsed (null = world root)
   const currentNode = path.length > 0 ? findNode(roots, path[path.length - 1]) : null;
-  const children    = currentNode ? currentNode.children : roots.filter(n => n.id !== "world").length > 0 ? roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.parentId === null && n.id !== "world") : roots;
+  const topLevel    = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
+  const children    = currentNode ? currentNode.children : topLevel;
 
   // Map HUD: show active zone if exploring, else browsed node
   const showActiveHud  = activeLeaf != null && state.isExploring;
@@ -120,33 +120,18 @@ export default function Content() {
     ...path.map(id => ({ id, label: findNode(roots, id)?.name ?? id })),
   ];
 
-  const goBack = () => {
-    setPath(p => p.slice(0, -1));
-    setExpandedId(null);
-  };
+  const goBack = () => setPath(p => p.slice(0, -1));
 
   const navigate = (id: string) => {
-    const node = findNode(roots, id);
-    if (!node) return;
-    if (node.children.length > 0) {
-      setPath(p => [...p, id]);
-      setExpandedId(null);
-    } else {
-      // leaf: toggle expand
-      setExpandedId(prev => prev === id ? null : id);
-    }
+    if (findNode(roots, id)) setPath(p => [...p, id]);
   };
 
   const navigateToCrumb = (id: string) => {
     if (id === "__root__") {
       setPath([]);
-      setExpandedId(null);
     } else {
       const idx = path.indexOf(id);
-      if (idx >= 0) {
-        setPath(p => p.slice(0, idx + 1));
-        setExpandedId(null);
-      }
+      if (idx >= 0) setPath(p => p.slice(0, idx + 1));
     }
   };
 
@@ -225,22 +210,65 @@ export default function Content() {
 
         {/* ── Zone 리스트 ── */}
         <div className="nav-list">
-          {children.map(node => {
-            const isLeaf     = node.tickSec != null;
-            const isActive   = node.id === activeZone;
-            const isExpanded = expandedId === node.id;
-
-            return (
-              <div key={node.id}>
+          {currentNode?.tickSec != null ? (
+            /* ── Leaf view: action rows ── */
+            (() => {
+              const leaf     = currentNode;
+              const isActive = leaf.id === activeZone;
+              return (
+                <>
+                  {/* 탐색 시작 / 탐색 중 */}
+                  <div
+                    className={`nav-row${isActive ? " nav-row--active" : ""}`}
+                    onClick={async () => {
+                      if (isActive) return;
+                      try { await api.startExploration(leaf.id); } catch { return; }
+                      dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
+                    }}
+                  >
+                    <div className="nav-row-info">
+                      <div className="nav-row-name">{isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}</div>
+                      <div className="nav-row-badges">
+                        <span className="badge">◷ {leaf.tickSec}s</span>
+                        <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
+                        {isActive && <span className="badge badge--active">탐색 중</span>}
+                      </div>
+                    </div>
+                    <div className="nav-row-arrow">{isActive ? "●" : "▶"}</div>
+                  </div>
+                  {/* 탐색 취소 */}
+                  {isActive && (
+                    <div
+                      className="nav-row nav-row--stop"
+                      onClick={async () => {
+                        try { await api.stopExploration(); } catch { return; }
+                        dispatch({ type: "STOP_EXPLORE" });
+                      }}
+                    >
+                      <div className="nav-row-info">
+                        <div className="nav-row-name">✕ 탐색 취소</div>
+                        <div className="nav-row-badges">
+                          <span className="badge">◷ {fmtElapsed(elapsed)}</span>
+                          <span className="badge">{progress.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                      <div className="nav-row-arrow">›</div>
+                    </div>
+                  )}
+                </>
+              );
+            })()
+          ) : (
+            /* ── Branch view: child list ── */
+            children.map(node => {
+              const isLeaf   = node.tickSec != null;
+              const isActive = node.id === activeZone;
+              return (
                 <div
+                  key={node.id}
                   className={`nav-row${isActive ? " nav-row--active" : ""}`}
                   onClick={() => navigate(node.id)}
                 >
-                  {node.art && (
-                    <div className="nav-row-art">
-                      {node.art.split("\n").map((row, i) => <div key={i}>{row}</div>)}
-                    </div>
-                  )}
                   <div className="nav-row-info">
                     <div className="nav-row-name">{node.name}</div>
                     <div className="nav-row-badges">
@@ -249,48 +277,12 @@ export default function Content() {
                       <span className={`badge badge--danger ${DANGER_CLASS[node.dangerLevel]}`}>{node.dangerLevel}</span>
                       {isActive && <span className="badge badge--active">탐색 중</span>}
                     </div>
-                    {isActive && (
-                      <div className="progress-bar" style={{ marginTop: 6 }}>
-                        <div className="progress-fill" style={{ width: `${progress}%` }} />
-                      </div>
-                    )}
                   </div>
-                  <div className="nav-row-arrow">{isLeaf ? (isExpanded ? "▾" : "▸") : "›"}</div>
+                  <div className="nav-row-arrow">{isLeaf ? "▸" : "›"}</div>
                 </div>
-
-                {/* ── Inline action panel (leaf only) ── */}
-                {isLeaf && isExpanded && (
-                  <div className="zone-action-panel">
-                    <button
-                      className={`zone-action-btn zone-action-btn--primary${isActive ? " zone-action-btn--current" : ""}`}
-                      onClick={async () => {
-                        if (isActive) return;
-                        try { await api.startExploration(node.id); } catch { return; }
-                        dispatch({ type: "CHANGE_ZONE", zoneId: node.id, tickSec: node.tickSec! });
-                      }}
-                    >
-                      <span className="zone-action-label">{isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}</span>
-                      <span className="zone-action-hint">{node.tickSec}초 간격</span>
-                    </button>
-                    {isActive && (
-                      <div className="zone-detail-status">
-                        <div className="zone-detail-status-row">
-                          <span className="zone-detail-elapsed">◷ {fmtElapsed(elapsed)}</span>
-                          <span className="zone-detail-pct">{progress.toFixed(1)}%</span>
-                        </div>
-                        <div className="progress-bar zone-detail-progress-bar">
-                          <div className="progress-fill" style={{ width: `${progress}%` }} />
-                        </div>
-                        <div className="map-hud-tick-bar zone-detail-tick-bar">
-                          <div ref={mapTickRef} className="map-hud-tick-fill" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
       </div>
