@@ -142,14 +142,13 @@ function LoginScreen() {
 }
 
 function AppLayout() {
-  const audioRef = useRef<HTMLAudioElement>(null);
-
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const audio = new Audio(bgm);
+    audio.loop = true;
+    audio.volume = 0.4;
     const play = () => { audio.play().catch(() => {}); };
     document.addEventListener('click', play, { once: true });
-    return () => document.removeEventListener('click', play);
+    return () => { document.removeEventListener('click', play); audio.pause(); };
   }, []);
 
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
@@ -216,7 +215,6 @@ function AppLayout() {
 
   return (
     <div className="app-container">
-      <audio ref={audioRef} src={bgm} loop />
       <div className="app-body">
         <div className="app-left">
           <Topbar
