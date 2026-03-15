@@ -2,6 +2,24 @@ import { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
+import zoneWorld  from "../assets/zones/world.png";
+import zoneKirtas from "../assets/zones/kirtas.png";
+import zoneVoid   from "../assets/zones/void.png";
+
+const ZONE_IMAGES: Record<string, string> = {
+  // world & branches
+  world:            zoneWorld,
+  kirtas:           zoneKirtas,
+  "red-canyon":     zoneKirtas,
+  "gray-plateau":   zoneVoid,
+  "final-city-outer": zoneVoid,
+  // leaves
+  "camp3-commercial":  zoneKirtas,
+  "camp3-factory":     zoneKirtas,
+  "camp3-mana-rift":   zoneKirtas,
+  "camp3-ancient-lab": zoneVoid,
+  "camp3-void-depths": zoneVoid,
+};
 import { useGame } from "../context/GameContext";
 import { api } from "../lib/api";
 import type { ZoneRow } from "../lib/api";
@@ -175,7 +193,7 @@ export default function Content() {
 
         {/* ── 맵 미리보기 ── */}
         <div className="map-preview-wrap" data-view={viewKey}>
-          <img src={mapPreview} alt="구역 지도" className="map-preview" />
+          <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
           <div className="map-region-tint" />
 
           <div className="map-hud-top">
