@@ -33,8 +33,8 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
       <div className="top-divider">|</div>
 
       <div className="top-stat-group">
-        <span className="top-res">◆ {resources.manaStone}</span>
-        <span className="top-res">💎 {resources.bss.toLocaleString()}</span>
+        <span className="top-res">◆ {(resources.mana_crystal ?? 0).toLocaleString()}</span>
+        <span className="top-res">💎 {(resources.bss ?? 0).toLocaleString()}</span>
       </div>
 
       <div className="top-divider">|</div>

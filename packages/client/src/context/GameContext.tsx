@@ -9,17 +9,15 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { INITIAL_LOGS } from '../types/log';
 import type { LogEntry } from '../types/log';
+import { api, type ExplorationStatus } from '../lib/api';
 
 // ─── Server shape ────────────────────────────────────────────
-// Server sends: { zone_id, created_at (ms), speed_per_sec }
-// Client derives elapsed / tickPct locally — no WebSocket needed.
 
 export type CurrentAction = {
   zoneId:      string;
-  createdAt:   number; // Date.now() ms — maps to server's created_at
-  speedPerSec: number; // ticks/sec    — maps to server's speed
+  createdAt:   number; // Date.now() ms — used for tick bar animation
+  speedPerSec: number; // 1 / tickSec
 };
 
 // ─── State ───────────────────────────────────────────────────
@@ -41,9 +39,10 @@ export type Equipment = {
 
 export type GameState = {
   character:     { name: string; level: number; hp: number; maxHp: number; exp: number; maxExp: number };
-  resources:     { manaStone: number; bss: number };
+  resources:     Record<string, number>;
   currentAction: CurrentAction;
   progress:      number;      // zone exploration % (0–100)
+  isExploring:   boolean;
   logs:          LogEntry[];
   inventory:     Item[];
   equipment:     Equipment;
@@ -51,14 +50,15 @@ export type GameState = {
 
 const INITIAL_STATE: GameState = {
   character:     { name: '방랑자_카이', level: 27, hp: 450, maxHp: 500, exp: 12500, maxExp: 34000 },
-  resources:     { manaStone: 14, bss: 2340 },
+  resources:     {},
   currentAction: {
     zoneId:      'camp3-commercial',
-    createdAt:   Date.now() - (4 * 3600 + 32 * 60 + 17) * 1000,
-    speedPerSec: 1 / 12, // 12s tick
+    createdAt:   Date.now(),
+    speedPerSec: 1 / 8,
   },
-  progress: 67,
-  logs:     INITIAL_LOGS,
+  progress:    0,
+  isExploring: false,
+  logs:        [],
   inventory: [
     { id: 'i1', name: '마나 결정(기본)', type: 'material', qty: 124, grade: 'common', desc: '가장 흔한 형태의 응집된 마나.' },
     { id: 'i2', name: '마나 결정(중급)', type: 'material', qty: 14, grade: 'uncommon', desc: '상당히 순도 높은 마나.' },
@@ -77,27 +77,48 @@ const INITIAL_STATE: GameState = {
 // ─── Actions ─────────────────────────────────────────────────
 
 export type GameAction =
-  | { type: 'CHANGE_ZONE';   zoneId: string }
+  | { type: 'CHANGE_ZONE';   zoneId: string; tickSec: number }
   | { type: 'ADD_LOG';       entry: LogEntry }
-  | { type: 'EARN_PROGRESS'; delta: number }
-  // Future: replace local state with server payload
-  | { type: 'SERVER_SYNC';   action: CurrentAction; progress: number };
+  | { type: 'SERVER_SYNC';   progress: number; resources: Record<string, number>; nextTickIn: number; tickSec: number }
+  | { type: 'SET_RESOURCES'; resources: Record<string, number> }
+  | { type: 'STOP_EXPLORE' };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'CHANGE_ZONE':
       return {
         ...state,
-        currentAction: { ...state.currentAction, zoneId: action.zoneId, createdAt: Date.now() },
-        logs: [],
-        progress: 0,
+        currentAction: {
+          zoneId:      action.zoneId,
+          createdAt:   Date.now(),
+          speedPerSec: 1 / action.tickSec,
+        },
+        isExploring: true,
+        logs:        [],
+        progress:    0,
       };
     case 'ADD_LOG':
       return { ...state, logs: [action.entry, ...state.logs].slice(0, 20) };
-    case 'EARN_PROGRESS':
-      return { ...state, progress: Math.min(100, +(state.progress + action.delta).toFixed(1)) };
-    case 'SERVER_SYNC':
-      return { ...state, currentAction: action.action, progress: action.progress };
+    case 'SERVER_SYNC': {
+      const merged: Record<string, number> = { ...state.resources };
+      for (const [k, v] of Object.entries(action.resources)) {
+        merged[k] = (merged[k] ?? 0) + v;
+      }
+      return {
+        ...state,
+        progress:  action.progress,
+        resources: merged,
+        currentAction: {
+          ...state.currentAction,
+          createdAt:   Date.now() - (action.tickSec - action.nextTickIn) * 1000,
+          speedPerSec: 1 / action.tickSec,
+        },
+      };
+    }
+    case 'SET_RESOURCES':
+      return { ...state, resources: action.resources };
+    case 'STOP_EXPLORE':
+      return { ...state, isExploring: false };
     default:
       return state;
   }
@@ -120,20 +141,21 @@ export function useGame() {
   return ctx;
 }
 
-// ─── Loot pool (shared) ──────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────
 
-const LOOT_POOL: LogEntry[] = [
-  { time: '', segments: [{ type: 'highlight', text: '마나 결정(중급)' }, { type: 'plain', text: ' ×2 획득 — ' }, { type: 'reward', text: '+120 획득' }] },
-  { time: '', segments: [{ type: 'plain', text: '폐허 탐색 중 ' }, { type: 'danger', text: '변이체(2단계) 조우' }, { type: 'plain', text: ' — 자동 회피 성공' }] },
-  { time: '', segments: [{ type: 'highlight', text: '고대 유물 파편' }, { type: 'plain', text: ' 발견 — 유물 복원 스킬 적용 중' }] },
-  { time: '', segments: [{ type: 'plain', text: '폐허 탐색 ' }, { type: 'good', text: 'Lv.12 달성' }, { type: 'plain', text: ' — 탐색 속도 +5%' }] },
-  { time: '', segments: [{ type: 'plain', text: '마나 결정(기본) ×3 획득 — ' }, { type: 'reward', text: '+45 획득' }] },
-  { time: '', segments: [{ type: 'highlight', text: '잠긴 금고' }, { type: 'plain', text: ' 발견 — 해제 시도 중' }] },
-  { time: '', segments: [{ type: 'plain', text: '구역 탐색 중 ' }, { type: 'danger', text: '마나 결정 폭발' }, { type: 'plain', text: ' 위험 감지 — 우회 경로 선택' }] },
-  { time: '', segments: [{ type: 'plain', text: '고철 부품 ×5 획득 — ' }, { type: 'good', text: '유물 복원 경험치 +12' }] },
-];
+const RESOURCE_NAMES: Record<string, string> = {
+  bss:              'BSS',
+  mana_crystal:     '마나 결정(기본)',
+  scrap_parts:      '고철 부품',
+  blueprint_frag:   '설계도 파편',
+  mana_crystal_mid: '마나 결정(중급)',
+  relic_frag:       '유물 파편',
+  mana_crystal_adv: '마나 결정(고급)',
+  ancient_record:   '고대 기록',
+  rare_relic:       '희귀 유물',
+  mutant_mat:       '변이체 재료',
+};
 
-const PROGRESS_PER_ITEM = 1.5;
 function nowHHMM() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -142,70 +164,118 @@ function nowHHMM() {
 // ─── Provider ────────────────────────────────────────────────
 
 type GameProviderProps = {
-  children: ReactNode;
-  username?: string;
-  level?: number;
+  children:       ReactNode;
+  username?:      string;
+  level?:         number;
+  initialStatus?: ExplorationStatus;
+  initialResources?: Record<string, number>;
 };
 
-export function GameProvider({ children, username, level }: GameProviderProps) {
-  const init: GameState = username
-    ? { ...INITIAL_STATE, character: { ...INITIAL_STATE.character, name: username, level: level ?? 1 } }
-    : INITIAL_STATE;
+export function GameProvider({ children, username, level, initialStatus, initialResources }: GameProviderProps) {
+  let init: GameState = {
+    ...INITIAL_STATE,
+    character: username
+      ? { ...INITIAL_STATE.character, name: username, level: level ?? 1 }
+      : INITIAL_STATE.character,
+    resources: initialResources ?? {},
+  };
+
+  if (initialStatus) {
+    init = {
+      ...init,
+      progress:    initialStatus.progress,
+      isExploring: true,
+      currentAction: {
+        zoneId:      initialStatus.sectorId,
+        createdAt:   Date.now() - (initialStatus.tickSec - initialStatus.nextTickIn) * 1000,
+        speedPerSec: 1 / initialStatus.tickSec,
+      },
+    };
+  }
+
   const [state, dispatch] = useReducer(gameReducer, init);
 
   const globalBarRef = useRef<HTMLDivElement>(null);
   const mapTickRef   = useRef<HTMLDivElement>(null);
 
-  // Stable refs so RAF closure doesn't go stale
-  const actionRef   = useRef(state.currentAction);
-  const progressRef = useRef(state.progress);
-  const awardedRef  = useRef(0); // items awarded this session
+  // Stable refs so RAF + async closures don't go stale
+  const actionRef      = useRef(state.currentAction);
+  const isExploringRef = useRef(state.isExploring);
 
-  useEffect(() => { actionRef.current   = state.currentAction; }, [state.currentAction]);
-  useEffect(() => { progressRef.current = state.progress;      }, [state.progress]);
-  useEffect(() => { awardedRef.current  = 0;                   }, [state.currentAction.zoneId]);
+  useEffect(() => { actionRef.current      = state.currentAction; }, [state.currentAction]);
+  useEffect(() => { isExploringRef.current = state.isExploring;   }, [state.isExploring]);
 
   const dispatchStable = useCallback(dispatch, []);
+
   const providerValue = useMemo(
     () => ({ state, dispatch, globalBarRef, mapTickRef }),
     [state, dispatch],
   );
 
+  // ── RAF: tick bar animation only ──────────────────────────
   useEffect(() => {
     let rafId = 0;
 
     const tick = () => {
-      const now           = Date.now();
-      const action        = actionRef.current;
-      const tickPeriodMs  = 1000 / action.speedPerSec;
-      const msSinceStart  = now - action.createdAt;
-      const tickPct       = (msSinceStart % tickPeriodMs) / tickPeriodMs;
-      const totalItems    = Math.floor(msSinceStart / tickPeriodMs);
+      const now          = Date.now();
+      const action       = actionRef.current;
+      const tickPeriodMs = 1000 / action.speedPerSec;
+      const msSinceStart = now - action.createdAt;
+      const tickPct      = (msSinceStart % tickPeriodMs) / tickPeriodMs;
 
-      // DOM: tick progress bars (no re-render)
-      if (mapTickRef.current) {
-        mapTickRef.current.style.width = `${tickPct * 100}%`;
-      }
-      if (globalBarRef.current) {
-        globalBarRef.current.style.width = `${tickPct * 100}%`;
-      }
-
-      // Award new items
-      while (awardedRef.current < totalItems) {
-        const entry: LogEntry = {
-          ...LOOT_POOL[awardedRef.current % LOOT_POOL.length],
-          time: nowHHMM(),
-        };
-        awardedRef.current++;
-        dispatchStable({ type: 'ADD_LOG',       entry });
-        dispatchStable({ type: 'EARN_PROGRESS', delta: PROGRESS_PER_ITEM });
-      }
+      if (mapTickRef.current)    mapTickRef.current.style.width    = `${tickPct * 100}%`;
+      if (globalBarRef.current)  globalBarRef.current.style.width  = `${tickPct * 100}%`;
 
       rafId = requestAnimationFrame(tick);
     };
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  // ── Server sync loop ──────────────────────────────────────
+  useEffect(() => {
+    const sync = async () => {
+      if (!isExploringRef.current) return;
+      try {
+        const result = await api.syncExploration();
+        dispatchStable({
+          type:       'SERVER_SYNC',
+          progress:   result.progress,
+          resources:  result.resources,
+          nextTickIn: result.nextTickIn,
+          tickSec:    result.tickSec,
+        });
+        if (result.ticks > 0) {
+          for (const [key, amt] of Object.entries(result.resources)) {
+            if (amt <= 0) continue;
+            const name = RESOURCE_NAMES[key] ?? key;
+            dispatchStable({
+              type:  'ADD_LOG',
+              entry: {
+                time: nowHHMM(),
+                segments: [
+                  { type: 'highlight', text: name },
+                  { type: 'plain',     text: ` ×${amt} 획득` },
+                ],
+              },
+            });
+          }
+        }
+      } catch { /* no active exploration or network error */ }
+    };
+
+    const interval = setInterval(sync, 30_000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') sync();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [dispatchStable]);
 
   return <GameContext.Provider value={providerValue}>{children}</GameContext.Provider>;

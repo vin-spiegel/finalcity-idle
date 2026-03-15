@@ -8,7 +8,7 @@ import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider, useGame } from './context/GameContext';
 import { authClient } from './lib/auth-client';
-import { api, type UserRow } from './lib/api';
+import { api, type UserRow, type ExplorationStatus } from './lib/api';
 
 import type { TabbarTab } from './components/Tabbar';
 
@@ -19,15 +19,23 @@ const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX = 480;
 
 export default function App() {
-  const [ready,    setReady]    = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [gameUser, setGameUser] = useState<UserRow | null>(null);
+  const [ready,            setReady]            = useState(false);
+  const [loggedIn,         setLoggedIn]         = useState(false);
+  const [gameUser,         setGameUser]         = useState<UserRow | null>(null);
+  const [initialStatus,    setInitialStatus]    = useState<ExplorationStatus>(null);
+  const [initialResources, setInitialResources] = useState<Record<string, number>>({});
 
   useEffect(() => {
     authClient.getSession().then(async ({ data }) => {
       if (data?.session) {
-        const user = await api.getMe().catch(() => null);
+        const [user, status, resources] = await Promise.all([
+          api.getMe().catch(() => null),
+          api.getStatus().catch(() => null),
+          api.getResources().catch(() => ({})),
+        ]);
         setGameUser(user);
+        setInitialStatus(status);
+        setInitialResources(resources);
         setLoggedIn(true);
       }
       setReady(true);
@@ -39,7 +47,12 @@ export default function App() {
   if (!loggedIn) return <LoginScreen />;
 
   return (
-    <GameProvider username={gameUser?.username} level={gameUser?.level}>
+    <GameProvider
+      username={gameUser?.username}
+      level={gameUser?.level}
+      initialStatus={initialStatus}
+      initialResources={initialResources}
+    >
       <AppLayout />
     </GameProvider>
   );

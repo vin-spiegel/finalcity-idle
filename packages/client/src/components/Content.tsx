@@ -320,9 +320,12 @@ export default function Content() {
                 <button
                   key={action.id}
                   className={`zone-action-btn zone-action-btn--${action.tone}${isCurrent ? " zone-action-btn--current" : ""}`}
-                  onClick={() => {
+                  onClick={async () => {
                     if (action.zoneId && action.zoneId !== activeZone) {
-                      dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId });
+                      try {
+                        await api.startExploration(action.zoneId);
+                      } catch { return; }
+                      dispatch({ type: "CHANGE_ZONE", zoneId: action.zoneId, tickSec: viewZone!.tickSec });
                     }
                   }}
                 >

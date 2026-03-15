@@ -34,6 +34,7 @@ export type SyncResult = {
   isFarming:        boolean;
   resources:        Record<string, number>;
   jobPointsGained:  number;
+  tickSec:          number;
   nextTickIn:       number;
 };
 
@@ -41,6 +42,7 @@ export type ExplorationStatus = {
   sectorId:   string;
   progress:   number;
   isFarming:  boolean;
+  tickSec:    number;
   nextTickIn: number;
 } | null;
 

@@ -70,6 +70,7 @@ exploration.post("/sync", requireAuth, async (c) => {
       data: {
         ticks: 0, progress: exp.progress, isFarming: exp.isFarming,
         resources: {}, jobPointsGained: 0,
+        tickSec: sector.tickSec,
         nextTickIn: sector.tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000),
       },
     });
@@ -124,6 +125,7 @@ exploration.post("/sync", requireAuth, async (c) => {
     data: {
       ticks: result.ticks, progress: newProgress, isFarming: result.isFarming,
       resources: result.resources, jobPointsGained: result.jobPointsGained,
+      tickSec: sector.tickSec,
       nextTickIn: sector.tickSec,
     },
   });
@@ -151,7 +153,7 @@ exploration.get("/status", requireAuth, async (c) => {
   const elapsedSinceLastTick = Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000);
   const nextTickIn = Math.max(0, (sector?.tickSec ?? 0) - elapsedSinceLastTick);
 
-  return c.json({ success: true, data: { ...exp, nextTickIn } });
+  return c.json({ success: true, data: { ...exp, tickSec: sector?.tickSec ?? 0, nextTickIn } });
 });
 
 export default exploration;
