@@ -23,7 +23,7 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
         <div className="top-char-img">
           <img src={avatar} alt="Profile" />
         </div>
-        <span className="top-name">{character.name} Lv.{character.level}</span>
+        <span className="top-name">{character.name}</span>
       </div>
 
       <div className="top-spacer" />

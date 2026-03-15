@@ -1,8 +1,7 @@
 import { Hono } from "hono";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
-  users,
   userExploration,
   userResources,
   userJobs,
@@ -89,18 +88,21 @@ exploration.post("/start", requireAuth, async (c) => {
   const userId = c.get("userId");
   const { zoneId } = await c.req.json<{ zoneId: string }>();
 
-  // Zone from cache + user from DB in parallel
-  const [zone, [user]] = await Promise.all([
-    getZone(zoneId),
-    db.select().from(users).where(eq(users.id, userId)),
-  ]);
+  const zone = await getZone(zoneId);
 
   if (!zone)         return c.json({ success: false, error: "zone not found" }, 404);
   if (!zone.tickSec) return c.json({ success: false, error: "not an explorable zone" }, 400);
-  if (!user)         return c.json({ success: false, error: "user not found" }, 404);
 
-  if (user.level < zone.levelReq) {
-    return c.json({ success: false, error: `level ${zone.levelReq} required` }, 403);
+  // Skill-based lock check
+  if (zone.levelReq > 0 && zone.jobType) {
+    const [job] = await db
+      .select()
+      .from(userJobs)
+      .where(and(eq(userJobs.userId, userId), eq(userJobs.jobType, zone.jobType)));
+    const skillLevel = (job?.jobPoints ?? 0) / 100;
+    if (skillLevel < zone.levelReq) {
+      return c.json({ success: false, error: `${zone.actionType ?? zone.jobType} Lv.${zone.levelReq} 필요` }, 403);
+    }
   }
 
   const now = new Date();
@@ -132,6 +134,7 @@ exploration.post("/sync", requireAuth, async (c) => {
       isFarming:       result.isFarming,
       resources:       result.resources,
       jobPointsGained: result.jobPointsGained,
+      jobType:         zone.jobType,
       tickSec:         zone.tickSec,
       nextTickIn,
     },

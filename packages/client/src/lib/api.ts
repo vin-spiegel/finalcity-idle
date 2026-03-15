@@ -23,10 +23,11 @@ export type ZoneRow = {
   dangerLevel: string;
   // leaf-only (null for branch nodes):
   tickSec:     number | null;
+  actionType:  string | null;
   jobType:     string | null;
 };
 
-export type UserRow = { id: number; username: string; level: number };
+export type UserRow = { id: number; username: string };
 
 export type SyncResult = {
   ticks:            number;
@@ -34,6 +35,7 @@ export type SyncResult = {
   isFarming:        boolean;
   resources:        Record<string, number>;
   jobPointsGained:  number;
+  jobType:          string | null;
   tickSec:          number;
   nextTickIn:       number;
 };
@@ -50,6 +52,7 @@ export type InitResult = {
   user:      UserRow | null;
   status:    ExplorationStatus;
   resources: Record<string, number>;
+  skills:    Record<string, number>;
   zones:     ZoneRow[];
 };
 

@@ -24,15 +24,17 @@ export default function App() {
   const [gameUser,         setGameUser]         = useState<UserRow | null>(null);
   const [initialStatus,    setInitialStatus]    = useState<ExplorationStatus>(null);
   const [initialResources, setInitialResources] = useState<Record<string, number>>({});
+  const [initialSkills,    setInitialSkills]    = useState<Record<string, number>>({});
   const [initialZones,     setInitialZones]     = useState<ZoneRow[]>([]);
 
   useEffect(() => {
     // Single roundtrip: auth check + user + status + resources + zones
     api.init()
-      .then(({ user, status, resources, zones }) => {
+      .then(({ user, status, resources, skills, zones }) => {
         setGameUser(user);
         setInitialStatus(status);
         setInitialResources(resources);
+        setInitialSkills(skills);
         setInitialZones(zones);
         setLoggedIn(true);
       })
@@ -51,9 +53,9 @@ export default function App() {
   return (
     <GameProvider
       username={gameUser?.username}
-      level={gameUser?.level}
       initialStatus={initialStatus}
       initialResources={initialResources}
+      initialSkills={initialSkills}
       initialZones={initialZones}
     >
       <AppLayout />

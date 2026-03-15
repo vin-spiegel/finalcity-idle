@@ -38,8 +38,9 @@ export type Equipment = {
 };
 
 export type GameState = {
-  character:     { name: string; level: number; hp: number; maxHp: number; exp: number; maxExp: number };
+  character:     { name: string; hp: number; maxHp: number; exp: number; maxExp: number };
   resources:     Record<string, number>;
+  skills:        Record<string, number>; // jobType → skill level (0.00–100.00)
   currentAction: CurrentAction;
   progress:      number;      // zone exploration % (0–100)
   isExploring:   boolean;
@@ -49,8 +50,9 @@ export type GameState = {
 };
 
 const INITIAL_STATE: GameState = {
-  character:     { name: '방랑자_카이', level: 27, hp: 450, maxHp: 500, exp: 12500, maxExp: 34000 },
+  character:     { name: '방랑자_카이', hp: 450, maxHp: 500, exp: 12500, maxExp: 34000 },
   resources:     {},
+  skills:        {},
   currentAction: {
     zoneId:      'camp3-commercial',
     createdAt:   Date.now(),
@@ -79,7 +81,7 @@ const INITIAL_STATE: GameState = {
 export type GameAction =
   | { type: 'CHANGE_ZONE';   zoneId: string; tickSec: number }
   | { type: 'ADD_LOG';       entry: LogEntry }
-  | { type: 'SERVER_SYNC';   progress: number; resources: Record<string, number>; nextTickIn: number; tickSec: number }
+  | { type: 'SERVER_SYNC';   progress: number; resources: Record<string, number>; jobType: string | null; jobPointsGained: number; nextTickIn: number; tickSec: number }
   | { type: 'SET_RESOURCES'; resources: Record<string, number> }
   | { type: 'STOP_EXPLORE' };
 
@@ -104,10 +106,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       for (const [k, v] of Object.entries(action.resources)) {
         merged[k] = (merged[k] ?? 0) + v;
       }
+      const skills = { ...state.skills };
+      if (action.jobType && action.jobPointsGained > 0) {
+        skills[action.jobType] = (skills[action.jobType] ?? 0) + action.jobPointsGained / 100;
+      }
       return {
         ...state,
         progress:  action.progress,
         resources: merged,
+        skills,
         currentAction: {
           ...state.currentAction,
           createdAt:   Date.now() - (action.tickSec - action.nextTickIn) * 1000,
@@ -167,19 +174,20 @@ function nowHHMM() {
 type GameProviderProps = {
   children:          ReactNode;
   username?:         string;
-  level?:            number;
   initialStatus?:    ExplorationStatus;
   initialResources?: Record<string, number>;
+  initialSkills?:    Record<string, number>;
   initialZones?:     ZoneRow[];
 };
 
-export function GameProvider({ children, username, level, initialStatus, initialResources, initialZones }: GameProviderProps) {
+export function GameProvider({ children, username, initialStatus, initialResources, initialSkills, initialZones }: GameProviderProps) {
   let init: GameState = {
     ...INITIAL_STATE,
     character: username
-      ? { ...INITIAL_STATE.character, name: username, level: level ?? 1 }
+      ? { ...INITIAL_STATE.character, name: username }
       : INITIAL_STATE.character,
     resources: initialResources ?? {},
+    skills:    initialSkills    ?? {},
   };
 
   if (initialStatus) {
@@ -250,11 +258,13 @@ export function GameProvider({ children, username, level, initialStatus, initial
         const result = await api.syncExploration();
         console.log('[sync]', result);
         dispatchStable({
-          type:       'SERVER_SYNC',
-          progress:   result.progress,
-          resources:  result.resources,
-          nextTickIn: result.nextTickIn,
-          tickSec:    result.tickSec,
+          type:            'SERVER_SYNC',
+          progress:        result.progress,
+          resources:       result.resources,
+          jobType:         result.jobType,
+          jobPointsGained: result.jobPointsGained,
+          nextTickIn:      result.nextTickIn,
+          tickSec:         result.tickSec,
         });
         if (result.ticks > 0) {
           for (const [key, amt] of Object.entries(result.resources)) {

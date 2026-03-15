@@ -1065,6 +1065,33 @@ body {
   cursor: not-allowed;
 }
 
+/* ── Skill level row (above action button in leaf view) ── */
+.nav-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--panel-deep);
+}
+.nav-skill-label {
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.nav-skill-level {
+  color: var(--cyan-dim);
+  font-size: 12px;
+  font-weight: bold;
+}
+.nav-skill-req {
+  color: var(--amber);
+  font-size: 10px;
+  margin-left: auto;
+}
+
 .nav-row-art {
   font-family: monospace;
   font-size: 9px;

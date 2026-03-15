@@ -14,7 +14,7 @@ export default function ProfileView() {
         <img src={avatar} alt="Avatar" style={{ width: 80, height: 80, border: '1px solid var(--border-color)', objectFit: 'cover' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
           <div style={{ fontSize: 18, fontWeight: 'bold' }}>{character.name}</div>
-          <div style={{ color: 'var(--color-highlight)' }}>Lv.{character.level} 탐색자</div>
+          <div style={{ color: 'var(--color-highlight)' }}>탐색자</div>
         </div>
       </div>
 

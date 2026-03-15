@@ -20,6 +20,7 @@ type ZoneNode = {
   dangerLevel: DangerLevel;
   // branch: tickSec = null, leaf: tickSec set
   tickSec:     number | null;
+  actionType:  string | null;
   jobType:     string | null;
   children:    ZoneNode[];
 };
@@ -82,7 +83,7 @@ function findLeaf(roots: ZoneNode[], id: string): ZoneNode | null {
 
 export default function Content() {
   const { state, dispatch, mapTickRef, zones: zoneRows } = useGame();
-  const { currentAction, progress, logs } = state;
+  const { currentAction, progress, logs, skills } = state;
 
   const [roots,    setRoots]    = useState<ZoneNode[]>([]);
   const [starting, setStarting] = useState(false);
@@ -111,7 +112,7 @@ export default function Content() {
   const hudSubLine     = showActiveHud
     ? `${activeLeaf!.desc.slice(0, 40)}…`
     : currentNode
-      ? `Lv.${currentNode.levelReq} · ${currentNode.dangerLevel}`
+      ? `${currentNode.dangerLevel}`
       : "탐색 가능한 구역";
   const hudDesc        = showActiveHud ? activeLeaf!.desc : (currentNode?.desc ?? "지도를 탐색하여 다음 목적지를 선택하십시오.");
 
@@ -227,11 +228,24 @@ export default function Content() {
           ) : currentNode?.tickSec != null ? (
             /* ── Leaf view: action rows ── */
             (() => {
-              const leaf     = currentNode;
-              const isActive = leaf.id === activeZone;
-              const locked   = state.character.level < leaf.levelReq;
+              const leaf       = currentNode;
+              const isActive   = leaf.id === activeZone;
+              const skillLevel = leaf.jobType ? (skills[leaf.jobType] ?? 0) : 0;
+              const locked     = leaf.levelReq > 0 && skillLevel < leaf.levelReq;
+              const action     = leaf.actionType ?? "탐험";
               return (
                 <>
+                  {/* 스킬 레벨 표시 */}
+                  {leaf.jobType && (
+                    <div className="nav-skill-row">
+                      <span className="nav-skill-label">{action}</span>
+                      <span className="nav-skill-level">Lv.{skillLevel.toFixed(2)}</span>
+                      {locked && (
+                        <span className="nav-skill-req"> (필요 Lv.{leaf.levelReq})</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* 탐색 시작 / 탐색 중 */}
                   <div
                     className={`nav-row${isActive ? " nav-row--active" : ""}${starting ? " nav-row--pending" : ""}${locked ? " nav-row--locked" : ""}`}
@@ -251,12 +265,16 @@ export default function Content() {
                   >
                     <div className="nav-row-info">
                       <div className="nav-row-name">
-                        {locked ? `🔒 Lv.${leaf.levelReq} 필요` : starting ? "◌ 연결 중…" : isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}
+                        {locked
+                          ? `🔒 ${action} Lv.${leaf.levelReq} 필요`
+                          : starting ? "◌ 연결 중…"
+                          : isActive ? `◉ ${action} 중`
+                          : `▶ ${action} 시작`}
                       </div>
                       <div className="nav-row-badges">
                         <span className="badge">◷ {leaf.tickSec}s</span>
                         <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
-                        {isActive && <span className="badge badge--active">탐색 중</span>}
+                        {isActive && <span className="badge badge--active">{action} 중</span>}
                       </div>
                     </div>
                     <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
@@ -279,7 +297,7 @@ export default function Content() {
                       }}
                     >
                       <div className="nav-row-info">
-                        <div className="nav-row-name">{stopping ? "◌ 취소 중…" : "✕ 탐색 취소"}</div>
+                        <div className="nav-row-name">{stopping ? "◌ 취소 중…" : `✕ ${action} 취소`}</div>
                         <div className="nav-row-badges">
                           <span className="badge">◷ {fmtElapsed(elapsed)}</span>
                           <span className="badge">{progress.toFixed(1)}%</span>
@@ -296,6 +314,7 @@ export default function Content() {
             children.map(node => {
               const isLeaf   = node.tickSec != null;
               const isActive = node.id === activeZone;
+              const action   = node.actionType ?? null;
               return (
                 <div
                   key={node.id}
@@ -305,10 +324,10 @@ export default function Content() {
                   <div className="nav-row-info">
                     <div className="nav-row-name">{node.name}</div>
                     <div className="nav-row-badges">
-                      <span className="badge">Lv.{node.levelReq}</span>
+                      {isLeaf && action && <span className="badge">{action}</span>}
                       {isLeaf && <span className="badge">◷ {node.tickSec}s</span>}
                       <span className={`badge badge--danger ${DANGER_CLASS[node.dangerLevel]}`}>{node.dangerLevel}</span>
-                      {isActive && <span className="badge badge--active">탐색 중</span>}
+                      {isActive && <span className="badge badge--active">{action ?? "탐색"} 중</span>}
                     </div>
                   </div>
                   <div className="nav-row-arrow">{isLeaf ? "▸" : "›"}</div>

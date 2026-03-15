@@ -78,6 +78,7 @@ export const zones = pgTable("zones", {
   dangerLevel: text("danger_level").notNull().default("안전"),
   // leaf-only (null for branch nodes):
   tickSec:     integer("tick_sec"),
+  actionType:  text("action_type"),
   jobType:     text("job_type"),
   dropTable:   jsonb("drop_table").$type<DropEntry[]>(),
 });
@@ -88,7 +89,6 @@ export const users = pgTable("users", {
   id:        serial("id").primaryKey(),
   authId:    text("auth_id").unique().references(() => authUser.id),
   username:  text("username").notNull().unique(),
-  level:     integer("level").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
