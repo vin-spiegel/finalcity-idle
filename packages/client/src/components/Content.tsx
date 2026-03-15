@@ -95,7 +95,7 @@ export default function Content() {
   // path = list of zone IDs navigated into (excludes "world" root)
   const [path, setPath] = useState<string[]>([]);
 
-  const activeZone     = currentAction.zoneId;
+  const activeZone     = state.isExploring ? currentAction.zoneId : "";
   const activeLeaf     = findLeaf(roots, activeZone);
   const hudLogs        = logs.slice(0, HUD_LOG_COUNT);
   const elapsed        = Math.floor((Date.now() - currentAction.createdAt) / 1000);
