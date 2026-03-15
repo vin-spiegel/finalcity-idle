@@ -219,6 +219,13 @@ export function GameProvider({ children, username, level, initialStatus, initial
     let rafId = 0;
 
     const tick = () => {
+      if (!isExploringRef.current) {
+        if (mapTickRef.current)   mapTickRef.current.style.width   = "0%";
+        if (globalBarRef.current) globalBarRef.current.style.width = "0%";
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+
       const now          = Date.now();
       const action       = actionRef.current;
       const tickPeriodMs = 1000 / action.speedPerSec;
