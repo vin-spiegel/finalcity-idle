@@ -241,6 +241,7 @@ export function GameProvider({ children, username, level, initialStatus, initial
       if (!isExploringRef.current) return;
       try {
         const result = await api.syncExploration();
+        console.log('[sync]', result);
         dispatchStable({
           type:       'SERVER_SYNC',
           progress:   result.progress,
@@ -264,7 +265,9 @@ export function GameProvider({ children, username, level, initialStatus, initial
             });
           }
         }
-      } catch { /* no active exploration or network error */ }
+      } catch (err) {
+        console.warn('[sync] error:', err);
+      }
     };
 
     const interval = setInterval(sync, 30_000);
