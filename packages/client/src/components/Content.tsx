@@ -187,9 +187,9 @@ export default function Content() {
             {showActiveHud && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
           </div>
 
-          {showActiveHud && hudLogs.length > 0 && (
+          {showActiveHud && (
             <div className="map-hud-log">
-              {[...hudLogs].reverse().map((entry, i) => {
+              {hudLogs.length > 0 && [...hudLogs].reverse().map((entry, i) => {
                 const age = hudLogs.length - 1 - i;
                 return (
                   <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
