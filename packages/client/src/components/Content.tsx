@@ -229,13 +229,14 @@ export default function Content() {
             (() => {
               const leaf     = currentNode;
               const isActive = leaf.id === activeZone;
+              const locked   = state.character.level < leaf.levelReq;
               return (
                 <>
                   {/* 탐색 시작 / 탐색 중 */}
                   <div
-                    className={`nav-row${isActive ? " nav-row--active" : ""}${starting ? " nav-row--pending" : ""}`}
+                    className={`nav-row${isActive ? " nav-row--active" : ""}${starting ? " nav-row--pending" : ""}${locked ? " nav-row--locked" : ""}`}
                     onClick={async () => {
-                      if (isActive || starting) return;
+                      if (isActive || starting || locked) return;
                       setStarting(true);
                       // Optimistic: update UI immediately
                       dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
@@ -250,7 +251,7 @@ export default function Content() {
                   >
                     <div className="nav-row-info">
                       <div className="nav-row-name">
-                        {starting ? "◌ 연결 중…" : isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}
+                        {locked ? `🔒 Lv.${leaf.levelReq} 필요` : starting ? "◌ 연결 중…" : isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}
                       </div>
                       <div className="nav-row-badges">
                         <span className="badge">◷ {leaf.tickSec}s</span>
@@ -258,7 +259,7 @@ export default function Content() {
                         {isActive && <span className="badge badge--active">탐색 중</span>}
                       </div>
                     </div>
-                    <div className="nav-row-arrow">{isActive ? "●" : "▶"}</div>
+                    <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
                   </div>
                   {/* 탐색 취소 */}
                   {isActive && (

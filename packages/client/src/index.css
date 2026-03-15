@@ -1060,6 +1060,10 @@ body {
   pointer-events: none;
   cursor: default;
 }
+.nav-row--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .nav-row-art {
   font-family: monospace;
