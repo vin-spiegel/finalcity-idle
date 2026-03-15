@@ -141,7 +141,6 @@ function LoginScreen() {
 }
 
 function AppLayout() {
-  const { globalBarRef } = useGame();
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab,   setActiveTab]   = useState<SidebarTab>('chat');
@@ -213,9 +212,6 @@ function AppLayout() {
             activeTab={activeTab}
             onTabClick={handleTabClick}
           />
-          <div className="global-tick-bar">
-            <div ref={globalBarRef} className="global-tick-fill" />
-          </div>
           <div className="main">
             {tabbarTab === 'map' && <Content />}
             {tabbarTab === 'inventory' && <InventoryView />}

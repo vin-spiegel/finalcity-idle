@@ -840,17 +840,6 @@ body {
   gap: 6px;
 }
 
-.global-tick-bar {
-  height: 2px;
-  background: var(--border-dim);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.global-tick-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--amber-dim);
-}
 
 .breadcrumb-row {
   display: flex;
