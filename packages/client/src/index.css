@@ -1055,6 +1055,12 @@ body {
   background: rgba(181,137,0,0.04);
 }
 
+.nav-row--pending {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
+}
+
 .nav-row-art {
   font-family: monospace;
   font-size: 9px;

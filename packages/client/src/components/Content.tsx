@@ -84,7 +84,9 @@ export default function Content() {
   const { state, dispatch, mapTickRef, zones: zoneRows } = useGame();
   const { currentAction, progress, logs } = state;
 
-  const [roots, setRoots] = useState<ZoneNode[]>([]);
+  const [roots,    setRoots]    = useState<ZoneNode[]>([]);
+  const [starting, setStarting] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -231,15 +233,25 @@ export default function Content() {
                 <>
                   {/* 탐색 시작 / 탐색 중 */}
                   <div
-                    className={`nav-row${isActive ? " nav-row--active" : ""}`}
+                    className={`nav-row${isActive ? " nav-row--active" : ""}${starting ? " nav-row--pending" : ""}`}
                     onClick={async () => {
-                      if (isActive) return;
-                      try { await api.startExploration(leaf.id); } catch { return; }
+                      if (isActive || starting) return;
+                      setStarting(true);
+                      // Optimistic: update UI immediately
                       dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
+                      try {
+                        await api.startExploration(leaf.id);
+                      } catch {
+                        dispatch({ type: "STOP_EXPLORE" }); // rollback
+                      } finally {
+                        setStarting(false);
+                      }
                     }}
                   >
                     <div className="nav-row-info">
-                      <div className="nav-row-name">{isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}</div>
+                      <div className="nav-row-name">
+                        {starting ? "◌ 연결 중…" : isActive ? "◉ 탐색 중" : "▶ 탐색 시작"}
+                      </div>
                       <div className="nav-row-badges">
                         <span className="badge">◷ {leaf.tickSec}s</span>
                         <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
@@ -251,14 +263,22 @@ export default function Content() {
                   {/* 탐색 취소 */}
                   {isActive && (
                     <div
-                      className="nav-row nav-row--stop"
+                      className={`nav-row nav-row--stop${stopping ? " nav-row--pending" : ""}`}
                       onClick={async () => {
-                        try { await api.stopExploration(); } catch { return; }
+                        if (stopping) return;
+                        setStopping(true);
+                        // Optimistic: update UI immediately
                         dispatch({ type: "STOP_EXPLORE" });
+                        try {
+                          await api.stopExploration();
+                        } catch { /* server stop failed, but sync loop is now paused — ok */ }
+                        finally {
+                          setStopping(false);
+                        }
                       }}
                     >
                       <div className="nav-row-info">
-                        <div className="nav-row-name">✕ 탐색 취소</div>
+                        <div className="nav-row-name">{stopping ? "◌ 취소 중…" : "✕ 탐색 취소"}</div>
                         <div className="nav-row-badges">
                           <span className="badge">◷ {fmtElapsed(elapsed)}</span>
                           <span className="badge">{progress.toFixed(1)}%</span>
