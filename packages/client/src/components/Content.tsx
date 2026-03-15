@@ -83,10 +83,13 @@ export default function Content() {
   const { state, dispatch, mapTickRef } = useGame();
   const { currentAction, progress, logs } = state;
 
-  const [roots, setRoots] = useState<ZoneNode[]>([]);
+  const [roots,        setRoots]        = useState<ZoneNode[]>([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
 
   useEffect(() => {
-    api.fetchZones().then(rows => setRoots(buildTree(rows)));
+    api.fetchZones()
+      .then(rows => setRoots(buildTree(rows)))
+      .finally(() => setZonesLoading(false));
   }, []);
 
   // path = list of zone IDs navigated into (excludes "world" root)
@@ -210,7 +213,18 @@ export default function Content() {
 
         {/* ── Zone 리스트 ── */}
         <div className="nav-list">
-          {currentNode?.tickSec != null ? (
+          {zonesLoading ? (
+            <>
+              {[0.9, 0.65, 0.75, 0.55].map((w, i) => (
+                <div key={i} className="nav-row nav-row--skeleton">
+                  <div className="nav-row-info">
+                    <div className="skeleton-line" style={{ width: `${w * 100}%` }} />
+                    <div className="skeleton-line skeleton-line--sm" style={{ width: "40%" }} />
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : currentNode?.tickSec != null ? (
             /* ── Leaf view: action rows ── */
             (() => {
               const leaf     = currentNode;

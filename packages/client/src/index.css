@@ -1985,3 +1985,50 @@ body {
 .login-btn:disabled {
   opacity: 0.5; cursor: default;
 }
+
+/* ── Skeleton rows ───────────────────────────────────────── */
+.nav-row--skeleton { pointer-events: none; }
+.skeleton-line {
+  height: 10px;
+  background: var(--border);
+  border-radius: 1px;
+  margin-bottom: 6px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.skeleton-line--sm { height: 8px; margin-bottom: 0; opacity: 0.6; }
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.8; }
+}
+
+/* ── Loading screen ──────────────────────────────────────── */
+.loading-bar {
+  width: 160px; height: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.loading-bar-fill {
+  height: 100%;
+  background: var(--cyan-dim);
+  animation: loading-sweep 1.4s ease-in-out infinite;
+}
+@keyframes loading-sweep {
+  0%   { width: 0%;   margin-left: 0%; }
+  50%  { width: 60%;  margin-left: 20%; }
+  100% { width: 0%;   margin-left: 100%; }
+}
+.loading-status {
+  font-size: 11px; letter-spacing: 2px;
+  color: var(--text-dim); text-transform: uppercase;
+}
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.2s steps(4, end) infinite;
+}
+@keyframes loading-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}

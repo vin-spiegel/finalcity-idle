@@ -26,23 +26,23 @@ export default function App() {
   const [initialResources, setInitialResources] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    authClient.getSession().then(async ({ data }) => {
-      if (data?.session) {
-        const [user, status, resources] = await Promise.all([
-          api.getMe().catch(() => null),
-          api.getStatus().catch(() => null),
-          api.getResources().catch(() => ({})),
-        ]);
+    // Single roundtrip: auth check + user + status + resources
+    api.init()
+      .then(({ user, status, resources }) => {
         setGameUser(user);
         setInitialStatus(status);
         setInitialResources(resources);
         setLoggedIn(true);
-      }
-      setReady(true);
-    });
+      })
+      .catch(() => {
+        // 401 = not logged in, other errors treated as logged out
+        setLoggedIn(false);
+      })
+      .finally(() => setReady(true));
   }, []);
 
-  if (!ready) return null;
+  // Show skeleton layout while loading (not a full-page blocker)
+  if (!ready) return <AppSkeleton />;
 
   if (!loggedIn) return <LoginScreen />;
 
@@ -55,6 +55,61 @@ export default function App() {
     >
       <AppLayout />
     </GameProvider>
+  );
+}
+
+function AppSkeleton() {
+  return (
+    <div className="app-container">
+      <div className="app-body">
+        <div className="app-left">
+          <div className="topbar">
+            <div className="topbar-left">
+              <div className="skeleton-line" style={{ width: 120, height: 12, margin: '4px 0' }} />
+            </div>
+            <div className="topbar-right">
+              <div className="skeleton-line" style={{ width: 80, height: 12 }} />
+            </div>
+          </div>
+          <div className="global-tick-bar" />
+          <div className="main">
+            <div className="content">
+              <div className="content-header">
+                <div className="breadcrumb-row">
+                  <div className="skeleton-line" style={{ width: 100, height: 10 }} />
+                </div>
+              </div>
+              <div className="content-body">
+                <div className="map-preview-wrap">
+                  <div style={{ width: '100%', height: '100%', background: 'var(--border)', opacity: 0.3 }} />
+                </div>
+                <div className="nav-list">
+                  {[0.85, 0.6, 0.72, 0.5].map((w, i) => (
+                    <div key={i} className="nav-row nav-row--skeleton">
+                      <div className="nav-row-info">
+                        <div className="skeleton-line" style={{ width: `${w * 100}%` }} />
+                        <div className="skeleton-line skeleton-line--sm" style={{ width: '40%' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="tabbar">
+            {[0,1,2].map(i => (
+              <div key={i} className="tabbar-btn">
+                <div className="skeleton-line" style={{ width: 20, height: 20, margin: '0 auto' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="app-right" style={{ width: SIDEBAR_RIGHT_DEFAULT }}>
+          <div className="skeleton-line" style={{ width: '80%', height: 12, margin: 16 }} />
+        </div>
+      </div>
+      <CRTOverlay />
+    </div>
   );
 }
 

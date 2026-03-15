@@ -46,7 +46,16 @@ export type ExplorationStatus = {
   nextTickIn: number;
 } | null;
 
+export type InitResult = {
+  user:      UserRow | null;
+  status:    ExplorationStatus;
+  resources: Record<string, number>;
+};
+
 export const api = {
+  init: () =>
+    req<InitResult>('/init'),
+
   fetchZones: () =>
     req<ZoneRow[]>('/zones'),
 
