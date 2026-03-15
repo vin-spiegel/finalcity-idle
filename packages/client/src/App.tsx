@@ -7,6 +7,7 @@ import SidebarRight from './components/SidebarRight';
 import Tabbar from './components/Tabbar';
 import CRTOverlay from './components/CRTOverlay';
 import { GameProvider } from './context/GameContext';
+import bgm from './assets/audio/Dunes of the Fifth Moon.mp3';
 import { authClient } from './lib/auth-client';
 import { api, type UserRow, type ExplorationStatus, type ZoneRow } from './lib/api';
 
@@ -141,6 +142,16 @@ function LoginScreen() {
 }
 
 function AppLayout() {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const play = () => { audio.play().catch(() => {}); };
+    document.addEventListener('click', play, { once: true });
+    return () => document.removeEventListener('click', play);
+  }, []);
+
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab,   setActiveTab]   = useState<SidebarTab>('chat');
@@ -205,6 +216,7 @@ function AppLayout() {
 
   return (
     <div className="app-container">
+      <audio ref={audioRef} src={bgm} loop />
       <div className="app-body">
         <div className="app-left">
           <Topbar
