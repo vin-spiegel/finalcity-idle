@@ -213,8 +213,8 @@ body {
   overflow: hidden;
   max-width: 220px;
 }
-.top-action-dot   { color: var(--cyan); font-size: 8px; flex-shrink: 0; }
-.top-action-label { color: var(--cyan-dim); flex-shrink: 0; }
+.top-action-dot   { color: var(--amber-dim); font-size: 8px; flex-shrink: 0; }
+.top-action-label { color: var(--amber-dim); flex-shrink: 0; opacity: 0.8; }
 .top-action-sep   { color: var(--border); flex-shrink: 0; }
 .top-action-zone  { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

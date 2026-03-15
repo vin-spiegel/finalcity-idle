@@ -30,6 +30,8 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
         <span className="top-name">{character.name}</span>
       </div>
 
+      <div className="top-spacer" />
+
       {activeZone && (
         <div className="top-action-status">
           <span className="top-action-dot">◉</span>
@@ -39,15 +41,13 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
         </div>
       )}
 
-      <div className="top-spacer" />
-
       <svg className="top-circle-tick" width="28" height="28" viewBox="0 0 28 28">
         <circle cx="14" cy="14" r="12" fill="none" stroke="var(--border-dim)" strokeWidth="2" />
         <circle
           ref={circleTickRef}
           cx="14" cy="14" r="12"
           fill="none"
-          stroke="var(--cyan)"
+          stroke="var(--amber-dim)"
           strokeWidth="2"
           strokeDasharray={CIRCLE_CIRCUMFERENCE}
           strokeDashoffset={CIRCLE_CIRCUMFERENCE}
