@@ -85,12 +85,11 @@ export const zones = pgTable("zones", {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export const users = pgTable("users", {
-  id:           serial("id").primaryKey(),
-  authId:       text("auth_id").unique().references(() => authUser.id),
-  username:     text("username").notNull().unique(),
-  level:        integer("level").notNull().default(1),
-  createdAt:    timestamp("created_at").notNull().defaultNow(),
-  lastSyncedAt: timestamp("last_synced_at").notNull().defaultNow(),
+  id:        serial("id").primaryKey(),
+  authId:    text("auth_id").unique().references(() => authUser.id),
+  username:  text("username").notNull().unique(),
+  level:     integer("level").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const userResources = pgTable("user_resources", {
@@ -120,7 +119,6 @@ export const userStats = pgTable("user_stats", {
 export const userExploration = pgTable("user_exploration", {
   userId:     integer("user_id").notNull().primaryKey().references(() => users.id),
   zoneId:     text("zone_id").notNull().references(() => zones.id),
-  progress:   real("progress").notNull().default(0),   // 0–100
   startedAt:  timestamp("started_at").notNull().defaultNow(),
   lastTickAt: timestamp("last_tick_at").notNull().defaultNow(),
   isFarming:  boolean("is_farming").notNull().default(false),

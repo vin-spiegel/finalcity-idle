@@ -34,9 +34,12 @@ init.get("/", requireAuth, async (c) => {
     // Find zone from already-fetched zoneRows — no extra DB query
     const zone = zoneRows.find(z => z.id === expRow.zoneId) ?? null;
     const tickSec = zone?.tickSec ?? 0;
-    const elapsedSinceLastTick = Math.floor((Date.now() - expRow.lastTickAt.getTime()) / 1000);
-    const nextTickIn = Math.max(0, tickSec - elapsedSinceLastTick);
-    status = { ...expRow, tickSec, nextTickIn };
+    const nextTickIn = Math.max(0, tickSec - Math.floor((Date.now() - expRow.lastTickAt.getTime()) / 1000));
+    const progress = Math.min(
+      Math.floor((expRow.lastTickAt.getTime() - expRow.startedAt.getTime()) / (tickSec * 1000)),
+      100,
+    );
+    status = { ...expRow, tickSec, nextTickIn, progress };
   }
 
   const resources = Object.fromEntries(resourceRows.map(r => [r.resourceType, r.amount]));

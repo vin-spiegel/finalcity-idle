@@ -16,6 +16,13 @@ const exploration = new Hono<AppEnv>();
 
 // ─── Shared: process pending ticks and persist results ───────────────────────
 
+function deriveProgress(startedAt: Date, lastTickAt: Date, tickSec: number): number {
+  return Math.min(
+    Math.floor((lastTickAt.getTime() - startedAt.getTime()) / (tickSec * 1000)),
+    100,
+  );
+}
+
 async function flushTicks(userId: number) {
   const [exp] = await db
     .select()
@@ -27,24 +34,27 @@ async function flushTicks(userId: number) {
   const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
   if (!zone?.tickSec || !zone.dropTable) return null;
 
+  const currentProgress = deriveProgress(exp.startedAt, exp.lastTickAt, zone.tickSec);
+
   const result = calcTicks({
     lastTickAt:      exp.lastTickAt,
     tickSec:         zone.tickSec,
-    currentProgress: exp.progress,
+    currentProgress,
     dropTable:       zone.dropTable,
   });
 
   if (result.ticks === 0) {
     const nextTickIn = zone.tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000);
-    return { result, exp, zone, nextTickIn: Math.max(0, nextTickIn) };
+    return { result, zone, nextTickIn: Math.max(0, nextTickIn), progress: currentProgress };
   }
 
-  const now = new Date();
-  const newProgress = exp.progress + result.progressGain;
+  // Advance lastTickAt to the exact tick boundary (not wall-clock now)
+  const newLastTickAt = new Date(exp.lastTickAt.getTime() + result.ticks * zone.tickSec * 1000);
+  const newProgress   = currentProgress + result.progressGain;
 
   await Promise.all([
     db.update(userExploration)
-      .set({ progress: newProgress, lastTickAt: now, isFarming: result.isFarming })
+      .set({ lastTickAt: newLastTickAt, isFarming: result.isFarming })
       .where(eq(userExploration.userId, userId)),
 
     ...Object.entries(result.resources).map(([resourceType, amount]) =>
@@ -67,11 +77,10 @@ async function flushTicks(userId: number) {
             },
           })]
       : []),
-
-    db.update(users).set({ lastSyncedAt: now }).where(eq(users.id, userId)),
   ]);
 
-  return { result, exp: { ...exp, progress: newProgress }, zone, nextTickIn: zone.tickSec };
+  const nextTickIn = Math.max(0, zone.tickSec - Math.floor((Date.now() - newLastTickAt.getTime()) / 1000));
+  return { result, zone, nextTickIn, progress: newProgress };
 }
 
 // ─── POST /api/exploration/start  { zoneId } ─────────────────────────────────
@@ -93,10 +102,10 @@ exploration.post("/start", requireAuth, async (c) => {
   const now = new Date();
   await db
     .insert(userExploration)
-    .values({ userId, zoneId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false })
+    .values({ userId, zoneId, startedAt: now, lastTickAt: now, isFarming: false })
     .onConflictDoUpdate({
       target: userExploration.userId,
-      set: { zoneId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false },
+      set: { zoneId, startedAt: now, lastTickAt: now, isFarming: false },
     });
 
   return c.json({ success: true, data: { zoneId, startedAt: now } });
@@ -109,13 +118,13 @@ exploration.post("/sync", requireAuth, async (c) => {
   const flushed = await flushTicks(userId);
   if (!flushed) return c.json({ success: false, error: "no active exploration" }, 404);
 
-  const { result, exp, zone, nextTickIn } = flushed;
+  const { result, progress, zone, nextTickIn } = flushed;
 
   return c.json({
     success: true,
     data: {
       ticks:           result.ticks,
-      progress:        exp.progress,
+      progress,
       isFarming:       result.isFarming,
       resources:       result.resources,
       jobPointsGained: result.jobPointsGained,
@@ -150,8 +159,9 @@ exploration.get("/status", requireAuth, async (c) => {
   const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
   const tickSec    = zone?.tickSec ?? 0;
   const nextTickIn = Math.max(0, tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000));
+  const progress   = deriveProgress(exp.startedAt, exp.lastTickAt, tickSec);
 
-  return c.json({ success: true, data: { ...exp, tickSec, nextTickIn } });
+  return c.json({ success: true, data: { ...exp, tickSec, nextTickIn, progress } });
 });
 
 export default exploration;
