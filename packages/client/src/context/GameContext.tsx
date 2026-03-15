@@ -133,12 +133,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
 // ─── Context ─────────────────────────────────────────────────
 
+export const CIRCLE_CIRCUMFERENCE = 75.4; // 2π × r=12
+
 type GameContextValue = {
-  state:         GameState;
-  dispatch:      React.Dispatch<GameAction>;
-  globalBarRef:  RefObject<HTMLDivElement | null>;
-  mapTickRef:    RefObject<HTMLDivElement | null>;
-  zones:         ZoneRow[];
+  state:          GameState;
+  dispatch:       React.Dispatch<GameAction>;
+  circleTickRef:  RefObject<SVGCircleElement | null>;
+  mapTickRef:     RefObject<HTMLDivElement | null>;
+  zones:          ZoneRow[];
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -205,8 +207,8 @@ export function GameProvider({ children, username, initialStatus, initialResourc
 
   const [state, dispatch] = useReducer(gameReducer, init);
 
-  const globalBarRef = useRef<HTMLDivElement>(null);
-  const mapTickRef   = useRef<HTMLDivElement>(null);
+  const circleTickRef = useRef<SVGCircleElement>(null);
+  const mapTickRef    = useRef<HTMLDivElement>(null);
 
   // Stable refs so RAF + async closures don't go stale
   const actionRef      = useRef(state.currentAction);
@@ -218,7 +220,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
   const dispatchStable = useCallback(dispatch, []);
 
   const providerValue = useMemo(
-    () => ({ state, dispatch, globalBarRef, mapTickRef, zones: initialZones ?? [] }),
+    () => ({ state, dispatch, circleTickRef, mapTickRef, zones: initialZones ?? [] }),
     [state, dispatch, initialZones],
   );
 
@@ -228,8 +230,8 @@ export function GameProvider({ children, username, initialStatus, initialResourc
 
     const tick = () => {
       if (!isExploringRef.current) {
-        if (mapTickRef.current)   mapTickRef.current.style.width   = "0%";
-        if (globalBarRef.current) globalBarRef.current.style.width = "0%";
+        if (mapTickRef.current)    mapTickRef.current.style.width = "0%";
+        if (circleTickRef.current) circleTickRef.current.style.strokeDashoffset = String(CIRCLE_CIRCUMFERENCE);
         rafId = requestAnimationFrame(tick);
         return;
       }
@@ -240,8 +242,8 @@ export function GameProvider({ children, username, initialStatus, initialResourc
       const msSinceStart = now - action.createdAt;
       const tickPct      = (msSinceStart % tickPeriodMs) / tickPeriodMs;
 
-      if (mapTickRef.current)    mapTickRef.current.style.width    = `${tickPct * 100}%`;
-      if (globalBarRef.current)  globalBarRef.current.style.width  = `${tickPct * 100}%`;
+      if (mapTickRef.current)    mapTickRef.current.style.width = `${tickPct * 100}%`;
+      if (circleTickRef.current) circleTickRef.current.style.strokeDashoffset = String(CIRCLE_CIRCUMFERENCE * (1 - tickPct));
 
       rafId = requestAnimationFrame(tick);
     };

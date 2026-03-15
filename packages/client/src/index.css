@@ -201,6 +201,8 @@ body {
 
 .top-spacer { flex: 1; }
 
+.top-circle-tick { flex-shrink: 0; }
+
 .top-action-status {
   display: flex;
   align-items: center;

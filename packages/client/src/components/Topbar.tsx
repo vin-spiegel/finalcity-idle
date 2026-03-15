@@ -1,7 +1,7 @@
 import { Bell, MessageSquare, Twitter } from 'lucide-react';
 import avatar from '../assets/image.png';
 import type { SidebarTab } from '../App';
-import { useGame } from '../context/GameContext';
+import { useGame, CIRCLE_CIRCUMFERENCE } from '../context/GameContext';
 
 const NOTIF_COUNT = 3;
 
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
-  const { state, globalBarRef, zones } = useGame();
+  const { state, circleTickRef, zones } = useGame();
   const { character, resources, currentAction, isExploring } = state;
 
   const isActive = (tab: SidebarTab) => sidebarOpen && activeTab === tab;
@@ -41,7 +41,20 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
 
       <div className="top-spacer" />
 
-      <span ref={globalBarRef} className="top-tick-indicator" />
+      <svg className="top-circle-tick" width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="var(--border-dim)" strokeWidth="2" />
+        <circle
+          ref={circleTickRef}
+          cx="14" cy="14" r="12"
+          fill="none"
+          stroke="var(--cyan)"
+          strokeWidth="2"
+          strokeDasharray={CIRCLE_CIRCUMFERENCE}
+          strokeDashoffset={CIRCLE_CIRCUMFERENCE}
+          strokeLinecap="round"
+          transform="rotate(-90 14 14)"
+        />
+      </svg>
 
       <div className="top-divider">|</div>
 
