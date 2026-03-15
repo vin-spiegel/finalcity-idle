@@ -217,6 +217,14 @@ export function GameProvider({ children, username, initialStatus, initialResourc
 
   const dispatchStable = useCallback(dispatch, []);
 
+  // nextTickIn from server — used only once at mount to align first sync
+  const initialNextTickInRef = useRef(initialStatus?.nextTickIn ?? 0);
+
+  // Cancelable timeout ref for tick-aligned syncs
+  const syncTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Exposed so "exploration start" effect can trigger a reschedule
+  const scheduleSyncRef = useRef<(ms: number) => void>(() => {});
+
   const providerValue = useMemo(
     () => ({ state, dispatch, globalBarRef, mapTickRef, zones: initialZones ?? [] }),
     [state, dispatch, initialZones],
