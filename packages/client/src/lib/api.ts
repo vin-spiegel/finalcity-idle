@@ -13,17 +13,17 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return json.data;
 }
 
-export type SectorRow = {
+export type ZoneRow = {
   id:          string;
-  zoneId:      string;
-  regionKey:   string;
+  parentId:    string | null;
   name:        string;
-  levelReq:    number;
-  tickSec:     number;
-  dangerLevel: string;
-  jobType:     string;
-  art:         string;
   desc:        string;
+  art:         string;
+  levelReq:    number;
+  dangerLevel: string;
+  // leaf-only (null for branch nodes):
+  tickSec:     number | null;
+  jobType:     string | null;
 };
 
 export type UserRow = { id: number; username: string; level: number };
@@ -39,7 +39,7 @@ export type SyncResult = {
 };
 
 export type ExplorationStatus = {
-  sectorId:   string;
+  zoneId:     string;
   progress:   number;
   isFarming:  boolean;
   tickSec:    number;
@@ -47,8 +47,8 @@ export type ExplorationStatus = {
 } | null;
 
 export const api = {
-  fetchSectors: () =>
-    req<SectorRow[]>('/zones/sectors'),
+  fetchZones: () =>
+    req<ZoneRow[]>('/zones'),
 
   getMe: () =>
     req<UserRow>('/user/me'),
@@ -56,10 +56,10 @@ export const api = {
   getResources: () =>
     req<Record<string, number>>('/user/me/resources'),
 
-  startExploration: (sectorId: string) =>
-    req<{ sectorId: string; startedAt: string }>('/exploration/start', {
+  startExploration: (zoneId: string) =>
+    req<{ zoneId: string; startedAt: string }>('/exploration/start', {
       method: 'POST',
-      body: JSON.stringify({ sectorId }),
+      body: JSON.stringify({ zoneId }),
     }),
 
   syncExploration: () =>

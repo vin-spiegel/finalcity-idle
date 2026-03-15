@@ -1,50 +1,27 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { sectors } from "../db/schema.js";
+import { zones } from "../db/schema.js";
 
-const zones = new Hono();
+const zonesRoute = new Hono();
 
-// GET /api/sectors — all sectors (for client bootstrap)
-zones.get("/sectors", async (c) => {
+// GET /api/zones — flat list with parentId (client builds tree)
+zonesRoute.get("/", async (c) => {
   const rows = await db
     .select({
-      id:          sectors.id,
-      zoneId:      sectors.zoneId,
-      regionKey:   sectors.regionKey,
-      name:        sectors.name,
-      levelReq:    sectors.levelReq,
-      tickSec:     sectors.tickSec,
-      dangerLevel: sectors.dangerLevel,
-      jobType:     sectors.jobType,
-      art:         sectors.art,
-      desc:        sectors.desc,
+      id:          zones.id,
+      parentId:    zones.parentId,
+      name:        zones.name,
+      desc:        zones.desc,
+      art:         zones.art,
+      levelReq:    zones.levelReq,
+      dangerLevel: zones.dangerLevel,
+      tickSec:     zones.tickSec,
+      jobType:     zones.jobType,
     })
-    .from(sectors)
-    .orderBy(sectors.levelReq);
+    .from(zones)
+    .orderBy(zones.levelReq);
 
   return c.json({ success: true, data: rows });
 });
 
-// GET /api/zones — distinct zone list
-zones.get("/", async (c) => {
-  const rows = await db
-    .selectDistinct({ zoneId: sectors.zoneId })
-    .from(sectors);
-
-  return c.json({ success: true, data: rows.map((r) => r.zoneId) });
-});
-
-// GET /api/zones/:id/sectors
-zones.get("/:id/sectors", async (c) => {
-  const zoneId = c.req.param("id");
-  const rows = await db
-    .select()
-    .from(sectors)
-    .where(eq(sectors.zoneId, zoneId))
-    .orderBy(sectors.levelReq);
-
-  return c.json({ success: true, data: rows });
-});
-
-export default zones;
+export default zonesRoute;

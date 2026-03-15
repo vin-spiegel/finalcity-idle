@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
-  sectors,
+  zones,
   users,
   userExploration,
   userResources,
@@ -15,32 +15,33 @@ import type { AppEnv } from "../types.js";
 
 const exploration = new Hono<AppEnv>();
 
-// ─── POST /api/exploration/start  { sectorId } ───────────────────────────────
+// ─── POST /api/exploration/start  { zoneId } ─────────────────────────────────
 exploration.post("/start", requireAuth, async (c) => {
   const userId = c.get("userId");
-  const { sectorId } = await c.req.json<{ sectorId: string }>();
+  const { zoneId } = await c.req.json<{ zoneId: string }>();
 
-  const [sector] = await db.select().from(sectors).where(eq(sectors.id, sectorId));
-  if (!sector) return c.json({ success: false, error: "sector not found" }, 404);
+  const [zone] = await db.select().from(zones).where(eq(zones.id, zoneId));
+  if (!zone)         return c.json({ success: false, error: "zone not found" }, 404);
+  if (!zone.tickSec) return c.json({ success: false, error: "not an explorable zone" }, 400);
 
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user) return c.json({ success: false, error: "user not found" }, 404);
 
-  if (user.level < sector.levelReq) {
-    return c.json({ success: false, error: `level ${sector.levelReq} required` }, 403);
+  if (user.level < zone.levelReq) {
+    return c.json({ success: false, error: `level ${zone.levelReq} required` }, 403);
   }
 
   const now = new Date();
 
   await db
     .insert(userExploration)
-    .values({ userId, sectorId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false })
+    .values({ userId, zoneId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false })
     .onConflictDoUpdate({
       target: userExploration.userId,
-      set: { sectorId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false },
+      set: { zoneId, progress: 0, startedAt: now, lastTickAt: now, isFarming: false },
     });
 
-  return c.json({ success: true, data: { sectorId, startedAt: now } });
+  return c.json({ success: true, data: { zoneId, startedAt: now } });
 });
 
 // ─── POST /api/exploration/sync ──────────────────────────────────────────────
@@ -54,14 +55,16 @@ exploration.post("/sync", requireAuth, async (c) => {
 
   if (!exp) return c.json({ success: false, error: "no active exploration" }, 404);
 
-  const [sector] = await db.select().from(sectors).where(eq(sectors.id, exp.sectorId));
-  if (!sector) return c.json({ success: false, error: "sector not found" }, 404);
+  const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
+  if (!zone || !zone.tickSec || !zone.dropTable) {
+    return c.json({ success: false, error: "zone not found" }, 404);
+  }
 
   const result = calcTicks({
     lastTickAt:      exp.lastTickAt,
-    tickSec:         sector.tickSec,
+    tickSec:         zone.tickSec,
     currentProgress: exp.progress,
-    dropTable:       sector.dropTable,
+    dropTable:       zone.dropTable,
   });
 
   if (result.ticks === 0) {
@@ -70,8 +73,8 @@ exploration.post("/sync", requireAuth, async (c) => {
       data: {
         ticks: 0, progress: exp.progress, isFarming: exp.isFarming,
         resources: {}, jobPointsGained: 0,
-        tickSec: sector.tickSec,
-        nextTickIn: sector.tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000),
+        tickSec: zone.tickSec,
+        nextTickIn: zone.tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000),
       },
     });
   }
@@ -94,10 +97,10 @@ exploration.post("/sync", requireAuth, async (c) => {
       });
   }
 
-  if (result.jobPointsGained > 0) {
+  if (result.jobPointsGained > 0 && zone.jobType) {
     await db
       .insert(userJobs)
-      .values({ userId, jobType: sector.jobType, jobPoints: result.jobPointsGained, isActive: true })
+      .values({ userId, jobType: zone.jobType, jobPoints: result.jobPointsGained, isActive: true })
       .onConflictDoUpdate({
         target: [userJobs.userId, userJobs.jobType],
         set: {
@@ -108,7 +111,7 @@ exploration.post("/sync", requireAuth, async (c) => {
   }
 
   await db.insert(explorationLogs).values({
-    userId, sectorId: exp.sectorId, eventType: "resource",
+    userId, zoneId: exp.zoneId, eventType: "resource",
     data: {
       ticks: result.ticks, resources: result.resources,
       jobPointsGained: result.jobPointsGained, progressGain: result.progressGain,
@@ -125,8 +128,8 @@ exploration.post("/sync", requireAuth, async (c) => {
     data: {
       ticks: result.ticks, progress: newProgress, isFarming: result.isFarming,
       resources: result.resources, jobPointsGained: result.jobPointsGained,
-      tickSec: sector.tickSec,
-      nextTickIn: sector.tickSec,
+      tickSec: zone.tickSec,
+      nextTickIn: zone.tickSec,
     },
   });
 });
@@ -149,11 +152,12 @@ exploration.get("/status", requireAuth, async (c) => {
 
   if (!exp) return c.json({ success: true, data: null });
 
-  const [sector] = await db.select().from(sectors).where(eq(sectors.id, exp.sectorId));
+  const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
   const elapsedSinceLastTick = Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000);
-  const nextTickIn = Math.max(0, (sector?.tickSec ?? 0) - elapsedSinceLastTick);
+  const tickSec   = zone?.tickSec ?? 0;
+  const nextTickIn = Math.max(0, tickSec - elapsedSinceLastTick);
 
-  return c.json({ success: true, data: { ...exp, tickSec: sector?.tickSec ?? 0, nextTickIn } });
+  return c.json({ success: true, data: { ...exp, tickSec, nextTickIn } });
 });
 
 export default exploration;

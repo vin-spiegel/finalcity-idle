@@ -186,7 +186,7 @@ export function GameProvider({ children, username, level, initialStatus, initial
       progress:    initialStatus.progress,
       isExploring: true,
       currentAction: {
-        zoneId:      initialStatus.sectorId,
+        zoneId:      initialStatus.zoneId,
         createdAt:   Date.now() - (initialStatus.tickSec - initialStatus.nextTickIn) * 1000,
         speedPerSec: 1 / initialStatus.tickSec,
       },
