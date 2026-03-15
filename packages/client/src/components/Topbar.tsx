@@ -1,4 +1,4 @@
-import { Bell, MessageSquare } from 'lucide-react';
+import { Bell, MessageSquare, Twitter } from 'lucide-react';
 import avatar from '../assets/image.png';
 import type { SidebarTab } from '../App';
 import { useGame } from '../context/GameContext';
@@ -40,6 +40,14 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
       <div className="top-divider">|</div>
 
       <div className="topbar-actions">
+        <button
+          className="topbar-icon-btn"
+          onClick={() => window.open('https://x.com/finalcity_game', '_blank')}
+          title="About Us"
+        >
+          <Twitter size={13} />
+        </button>
+
         <button
           className={`topbar-icon-btn${isActive('notif') ? ' active' : ''}`}
           onClick={() => onTabClick('notif')}
