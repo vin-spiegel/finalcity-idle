@@ -239,9 +239,9 @@ export default function Content() {
                   {leaf.jobType && (
                     <div className="nav-skill-row">
                       <span className="nav-skill-label">{action}</span>
-                      <span className="nav-skill-level">Lv.{skillLevel.toFixed(2)}</span>
+                      <span className="nav-skill-level">{skillLevel.toFixed(2)}</span>
                       {locked && (
-                        <span className="nav-skill-req"> (필요 Lv.{leaf.levelReq})</span>
+                        <span className="nav-skill-req"> (필요 {leaf.levelReq}.00)</span>
                       )}
                     </div>
                   )}
@@ -266,7 +266,7 @@ export default function Content() {
                     <div className="nav-row-info">
                       <div className="nav-row-name">
                         {locked
-                          ? `🔒 ${action} Lv.${leaf.levelReq} 필요`
+                          ? `🔒 ${action} ${leaf.levelReq}.00 필요`
                           : starting ? "◌ 연결 중…"
                           : isActive ? `◉ ${action} 중`
                           : `▶ ${action} 시작`}
