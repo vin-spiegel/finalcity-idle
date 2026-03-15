@@ -63,7 +63,7 @@ export default function SidebarRight({ activeTab }: Props) {
   }, [input, username]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
   };
 
   return (
