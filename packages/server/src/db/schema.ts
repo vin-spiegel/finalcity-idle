@@ -124,3 +124,13 @@ export const userExploration = pgTable("user_exploration", {
   isFarming:  boolean("is_farming").notNull().default(false),
 });
 
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export const chatMessages = pgTable("chat_messages", {
+  id:        serial("id").primaryKey(),
+  userId:    integer("user_id").references(() => users.id),
+  username:  text("username").notNull(),
+  body:      text("body").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+

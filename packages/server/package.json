@@ -15,7 +15,7 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.7",
+    "@hono/node-server": "^1.19.11",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.5.5",
     "dotenv": "^17.3.1",
@@ -23,11 +23,13 @@
     "hono": "^4.7.4",
     "jose": "^6.2.1",
     "postgres": "^3.4.8",
-    "shared": "workspace:*"
+    "shared": "workspace:*",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.4.0",
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.9",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"

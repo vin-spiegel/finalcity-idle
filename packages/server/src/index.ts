@@ -6,6 +6,7 @@ import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import api from "./routes/api.js";
 import { auth } from "./lib/auth.js";
+import { attachChatWs } from "./routes/chat.js";
 
 const app = new Hono();
 
@@ -35,6 +36,8 @@ app.use("*", serveStatic({ path: "./dist/public/index.html" }));
 
 const port = Number(process.env.PORT) || 3000;
 
-serve({ fetch: app.fetch, port }, () => {
+const server = serve({ fetch: app.fetch, port }, () => {
   console.log(`🏙️  FinalCity server running on http://localhost:${port}`);
 });
+
+attachChatWs(server as Parameters<typeof attachChatWs>[0]);
