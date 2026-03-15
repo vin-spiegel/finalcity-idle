@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
-  zones,
   users,
   userExploration,
   userResources,
   userJobs,
 } from "../db/schema.js";
+import { getZone } from "../lib/zoneCache.js";
 import { calcTicks } from "../lib/tick.js";
 import { requireAuth } from "../middleware/auth.js";
 import type { AppEnv } from "../types.js";
@@ -31,7 +31,8 @@ async function flushTicks(userId: number) {
 
   if (!exp) return null;
 
-  const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
+  // Zone from in-memory cache — no DB round-trip
+  const zone = await getZone(exp.zoneId);
   if (!zone?.tickSec || !zone.dropTable) return null;
 
   const currentProgress = deriveProgress(exp.startedAt, exp.lastTickAt, zone.tickSec);
@@ -88,12 +89,15 @@ exploration.post("/start", requireAuth, async (c) => {
   const userId = c.get("userId");
   const { zoneId } = await c.req.json<{ zoneId: string }>();
 
-  const [zone] = await db.select().from(zones).where(eq(zones.id, zoneId));
+  // Zone from cache + user from DB in parallel
+  const [zone, [user]] = await Promise.all([
+    getZone(zoneId),
+    db.select().from(users).where(eq(users.id, userId)),
+  ]);
+
   if (!zone)         return c.json({ success: false, error: "zone not found" }, 404);
   if (!zone.tickSec) return c.json({ success: false, error: "not an explorable zone" }, 400);
-
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
-  if (!user) return c.json({ success: false, error: "user not found" }, 404);
+  if (!user)         return c.json({ success: false, error: "user not found" }, 404);
 
   if (user.level < zone.levelReq) {
     return c.json({ success: false, error: `level ${zone.levelReq} required` }, 403);
@@ -156,8 +160,8 @@ exploration.get("/status", requireAuth, async (c) => {
 
   if (!exp) return c.json({ success: true, data: null });
 
-  const [zone] = await db.select().from(zones).where(eq(zones.id, exp.zoneId));
-  const tickSec    = zone?.tickSec ?? 0;
+  const zone     = await getZone(exp.zoneId);
+  const tickSec  = zone?.tickSec ?? 0;
   const nextTickIn = Math.max(0, tickSec - Math.floor((Date.now() - exp.lastTickAt.getTime()) / 1000));
   const progress   = deriveProgress(exp.startedAt, exp.lastTickAt, tickSec);
 
