@@ -167,10 +167,6 @@ const RESOURCE_NAMES: Record<string, string> = {
   mutant_mat:       '변이체 재료',
 };
 
-function nowHHMM() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 // ─── Provider ────────────────────────────────────────────────
 
@@ -254,11 +250,57 @@ export function GameProvider({ children, username, initialStatus, initialResourc
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // ── Server sync loop (tick-aligned) ──────────────────────────────────
+  // ── Client-side tick simulation (logs + toasts, no server request) ───
+  const zonesRef = useRef(initialZones ?? []);
+  useEffect(() => { zonesRef.current = initialZones ?? []; }, [initialZones]);
+
   useEffect(() => {
     if (!state.isExploring) return;
 
     let timeoutId: ReturnType<typeof setTimeout>;
+
+    const onTick = () => {
+      if (!isExploringRef.current) return;
+
+      const action   = actionRef.current;
+      const zone     = zonesRef.current.find(z => z.id === action.zoneId);
+      const drops    = zone?.dropTable ?? [];
+
+      for (const entry of drops) {
+        if (Math.random() < entry.chance) {
+          const name = RESOURCE_NAMES[entry.resourceType] ?? entry.resourceType;
+          dispatchStable({
+            type:  'ADD_LOG',
+            entry: {
+              segments: [
+                { type: 'highlight', text: name },
+                { type: 'plain',     text: ` ×${entry.amount} 획득` },
+              ],
+            },
+          });
+        }
+      }
+
+      // Re-align to server tick boundary (actionRef may be updated by SERVER_SYNC)
+      const tickPeriodMs = 1000 / action.speedPerSec;
+      const elapsed      = Date.now() - action.createdAt;
+      const nextDelay    = tickPeriodMs - (elapsed % tickPeriodMs);
+      timeoutId = setTimeout(onTick, Math.max(100, nextDelay));
+    };
+
+    // Fire at next tick boundary
+    const action       = actionRef.current;
+    const tickPeriodMs = 1000 / action.speedPerSec;
+    const elapsedMs    = Date.now() - action.createdAt;
+    const firstDelayMs = tickPeriodMs - (elapsedMs % tickPeriodMs);
+    timeoutId = setTimeout(onTick, Math.max(100, firstDelayMs));
+
+    return () => clearTimeout(timeoutId);
+  }, [state.isExploring, dispatchStable]);
+
+  // ── Server sync: background → foreground only ────────────────────────
+  useEffect(() => {
+    if (!state.isExploring) return;
 
     const doSync = async () => {
       if (!isExploringRef.current) return;
@@ -280,7 +322,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
             dispatchStable({
               type:  'ADD_LOG',
               entry: {
-                time: nowHHMM(),
+
                 segments: [
                   { type: 'highlight', text: name },
                   { type: 'plain',     text: ` ×${amt} 획득` },
@@ -292,7 +334,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
             dispatchStable({
               type:  'ADD_LOG',
               entry: {
-                time: nowHHMM(),
+
                 segments: [
                   { type: 'good',  text: `+${(result.jobPointsGained / 100).toFixed(2)}` },
                   { type: 'plain', text: ' 잡포 획득' },
@@ -301,35 +343,17 @@ export function GameProvider({ children, username, initialStatus, initialResourc
             });
           }
         }
-        // 다음 틱 경계에 정확히 sync 예약
-        if (isExploringRef.current) {
-          timeoutId = setTimeout(doSync, Math.max(500, result.nextTickIn * 1000));
-        }
       } catch (err) {
         console.warn('[sync] error:', err);
-        if (isExploringRef.current) {
-          timeoutId = setTimeout(doSync, 5_000);
-        }
       }
     };
 
-    // 첫 sync: 현재 틱 잔여 시간 계산
-    const action       = actionRef.current;
-    const tickPeriodMs = 1000 / action.speedPerSec;
-    const elapsedMs    = Date.now() - action.createdAt;
-    const firstDelayMs = tickPeriodMs - (elapsedMs % tickPeriodMs);
-    timeoutId = setTimeout(doSync, Math.max(500, firstDelayMs));
-
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        clearTimeout(timeoutId);
-        doSync();
-      }
+      if (document.visibilityState === 'visible') doSync();
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [state.isExploring, dispatchStable]);

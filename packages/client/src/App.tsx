@@ -146,29 +146,22 @@ function AppLayout() {
   const { state: { logs } } = useGame();
 
   type LogEntry = (typeof logs)[0];
-  const [logQueue,     setLogQueue]     = useState<LogEntry[]>([]);
-  const [logToast,     setLogToast]     = useState<LogEntry | null>(null);
-  const prevLogsLenRef = useRef<number | null>(null);
+  const [logToast,      setLogToast]      = useState<LogEntry | null>(null);
+  const prevFirstLogRef = useRef<LogEntry | null>(null);
 
+  // 새 로그 오면 바로 현재 토스트 교체 (queue 없음)
   useEffect(() => {
-    if (prevLogsLenRef.current === null) {
-      prevLogsLenRef.current = logs.length;
-      return;
-    }
-    const newCount = logs.length - prevLogsLenRef.current;
-    prevLogsLenRef.current = logs.length;
-    if (newCount <= 0) return;
-    setLogQueue(prev => [...prev, ...logs.slice(0, newCount)]);
+    if (logs.length === 0) { prevFirstLogRef.current = null; return; }
+    if (logs[0] === prevFirstLogRef.current) return;
+    prevFirstLogRef.current = logs[0];
+    setLogToast(logs[0]);
   }, [logs]);
 
   useEffect(() => {
-    if (logToast || logQueue.length === 0) return;
-    const [next, ...rest] = logQueue;
-    setLogToast(next);
-    setLogQueue(rest);
+    if (!logToast) return;
     const t = setTimeout(() => setLogToast(null), 2200);
     return () => clearTimeout(t);
-  }, [logToast, logQueue]);
+  }, [logToast]);
 
   useEffect(() => {
     const audio = new Audio(bgm);
@@ -245,23 +238,21 @@ function AppLayout() {
     <div className="app-container">
       <div className="app-body">
         <div className="app-left">
-          {logToast && (
-            <div className="entry-toast entry-toast--log" aria-live="polite">
-              <span className="log-time">{logToast.time}</span>
-              {' '}
-              {logToast.segments.map((seg, j) =>
-                seg.type === "plain"
-                  ? <span key={j}>{seg.text}</span>
-                  : <span key={j} className={seg.type}>{seg.text}</span>
-              )}
-            </div>
-          )}
           <Topbar
             sidebarOpen={sidebarOpen}
             activeTab={activeTab}
             onTabClick={handleTabClick}
           />
           <div className="main">
+            {logToast && (
+              <div className="entry-toast entry-toast--log" aria-live="polite">
+                {logToast.segments.map((seg, j) =>
+                  seg.type === "plain"
+                    ? <span key={j}>{seg.text}</span>
+                    : <span key={j} className={seg.type}>{seg.text}</span>
+                )}
+              </div>
+            )}
             {tabbarTab === 'map' && <Content />}
             {tabbarTab === 'inventory' && <InventoryView />}
             {tabbarTab === 'profile' && <ProfileView />}

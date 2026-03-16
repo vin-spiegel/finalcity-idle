@@ -334,14 +334,11 @@ export default function Content() {
                 const age = hudLogs.length - 1 - i;
                 return (
                   <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                    <span className="log-time">{entry.time}</span>
-                    <span className="log-text">
-                      {entry.segments.map((seg, j) =>
-                        seg.type === "plain"
-                          ? <span key={j}>{seg.text}</span>
-                          : <span key={j} className={seg.type}>{seg.text}</span>
-                      )}
-                    </span>
+                    {entry.segments.map((seg, j) =>
+                      seg.type === "plain"
+                        ? <span key={j}>{seg.text}</span>
+                        : <span key={j} className={seg.type}>{seg.text}</span>
+                    )}
                   </div>
                 );
               })}
