@@ -1,9 +1,23 @@
+import { useMemo } from 'react';
 import { useGame } from '../context/GameContext';
 import avatar from '../assets/image.png';
 
 export default function ProfileView() {
-  const { state } = useGame();
-  const { character, equipment } = state;
+  const { state, zones } = useGame();
+  const { character, equipment, skills } = state;
+
+  // jobType → display label from zone data
+  const jobLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const z of zones) {
+      if (z.jobType && z.actionType && !map[z.jobType]) {
+        map[z.jobType] = z.actionType;
+      }
+    }
+    return map;
+  }, [zones]);
+
+  const skillEntries = Object.entries(skills).filter(([, v]) => v > 0);
 
   const hpPct = (character.hp / character.maxHp) * 100;
   const expPct = (character.exp / character.maxExp) * 100;
@@ -76,6 +90,25 @@ export default function ProfileView() {
 
           </div>
         </div>
+
+        {skillEntries.length > 0 && (
+          <div style={{ border: '1px solid var(--border-color)', padding: 16, backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            <h3 style={{ fontSize: 14, color: 'var(--text-dim)', marginBottom: 12 }}>잡포 (직업 숙련도)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {skillEntries.map(([jobType, level]) => (
+                <div key={jobType}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
+                    <span>{jobLabels[jobType] ?? jobType}</span>
+                    <span style={{ color: 'var(--color-highlight)' }}>Lv.{level.toFixed(2)}</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${(level % 1) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

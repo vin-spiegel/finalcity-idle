@@ -857,6 +857,90 @@ body {
   transition: opacity 0.5s ease;
 }
 
+/* ── Explore card (탐험 중 상태 카드) ── */
+.explore-card {
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 12px 14px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.explore-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.explore-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.explore-card-zone {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.explore-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.explore-card-action {
+  color: var(--amber-dim);
+}
+
+.explore-card-dot {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.explore-card-elapsed {
+  color: var(--text-dim);
+}
+
+.explore-card-skill-lv {
+  color: var(--color-highlight);
+}
+
+.explore-card-pct {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber-dim);
+  white-space: nowrap;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.explore-card-bar {
+  height: 2px;
+  background: var(--border-dim);
+  margin: 0 -14px;
+}
+
+.explore-card-bar-fill {
+  height: 100%;
+  background: var(--amber-dim);
+  width: 0%;
+}
+
+.explore-card-log {
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .content-header {
   display: flex;
   flex-direction: column;

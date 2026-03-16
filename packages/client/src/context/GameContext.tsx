@@ -285,6 +285,18 @@ export function GameProvider({ children, username, initialStatus, initialResourc
               },
             });
           }
+          if (result.jobPointsGained > 0 && result.jobType) {
+            dispatchStable({
+              type:  'ADD_LOG',
+              entry: {
+                time: nowHHMM(),
+                segments: [
+                  { type: 'good',  text: `+${(result.jobPointsGained / 100).toFixed(2)}` },
+                  { type: 'plain', text: ' 잡포 획득' },
+                ],
+              },
+            });
+          }
         }
       } catch (err) {
         console.warn('[sync] error:', err);
