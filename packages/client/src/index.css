@@ -1216,6 +1216,94 @@ body {
   cursor: pointer;
 }
 
+/* ── NPC 인라인 대화 패널 (맵 영역 교체) ── */
+.npc-dialog-wrap {
+  display: flex;
+  height: 280px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--panel-deep);
+}
+
+.npc-dialog-portrait {
+  width: 110px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.npc-dialog-portrait img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.npc-dialog-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 12px;
+  overflow: hidden;
+}
+
+.npc-dialog-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-highlight);
+}
+
+.npc-dialog-sub {
+  font-size: 11px;
+  color: var(--amber-dim);
+  margin-top: 2px;
+}
+
+.npc-dialog-divider {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.5;
+  margin: 10px 0 8px;
+  letter-spacing: 0.1em;
+}
+
+.npc-dialog-lines {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.npc-dialog-lines p {
+  font-size: 12px;
+  color: var(--text-bright);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.npc-dialog-close {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.npc-dialog-close:hover {
+  border-color: var(--border);
+  color: var(--text-bright);
+}
+
 .nav-row-art {
   font-family: monospace;
   font-size: 9px;

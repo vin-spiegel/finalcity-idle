@@ -23,7 +23,7 @@ const ZONE_IMAGES: Record<string, string> = {
 import { useGame } from "../context/GameContext";
 import { api } from "../lib/api";
 import type { ZoneRow } from "../lib/api";
-import Modal from "./Modal";
+
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -292,7 +292,25 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── 맵 미리보기 ── */}
+        {/* ── NPC 대화 / 맵 미리보기 ── */}
+        {npcModal ? (
+          <div className="npc-dialog-wrap">
+            <div className="npc-dialog-portrait">
+              <img src={avatar} alt={npcModal.name} />
+            </div>
+            <div className="npc-dialog-content">
+              <div className="npc-dialog-name">{npcModal.name}</div>
+              <div className="npc-dialog-sub">탐험자</div>
+              <div className="npc-dialog-divider">┄ 대화 ┄</div>
+              <div className="npc-dialog-lines">
+                {npcModal.lines.map((line, i) => <p key={i}>{line}</p>)}
+              </div>
+              <button className="npc-dialog-close" onClick={() => setNpcModal(null)}>
+                › 자리를 뜬다
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="map-preview-wrap" data-view={viewKey}>
           <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
           <div className="map-region-tint" />
@@ -330,6 +348,7 @@ export default function Content() {
             </div>
           )}
         </div>
+        )}
 
         {/* ── Zone 리스트 ── */}
         <div className="nav-list">
@@ -476,18 +495,6 @@ export default function Content() {
 
       </div>
 
-      <Modal
-        isOpen={npcModal !== null}
-        imageSrc={avatar}
-        imageAlt={npcModal?.name ?? ""}
-        label={npcModal?.name ?? ""}
-        sublabel="탐험자"
-        dividerLabel="대화"
-        body={npcModal?.lines ?? []}
-        choices={[{ id: "close", label: "자리를 뜬다", tone: "neutral" }]}
-        onClose={() => setNpcModal(null)}
-        onChoice={() => setNpcModal(null)}
-      />
     </div>
   );
 }
