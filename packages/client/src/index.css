@@ -634,7 +634,30 @@ body {
 
 /* ─── CONTENT ────────────────────────────────────────────── */
 
+.entry-toast {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-dim);
+  font-size: 12px;
+  padding: 7px 16px;
+  letter-spacing: 0.5px;
+  z-index: 100;
+  pointer-events: none;
+  animation: toast-in-out 3.5s ease forwards;
+}
+@keyframes toast-in-out {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  10%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .content {
+  position: relative;
   background: var(--bg);
   padding: 20px;
   display: flex;

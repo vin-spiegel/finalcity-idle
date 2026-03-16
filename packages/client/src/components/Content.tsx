@@ -97,6 +97,16 @@ function findLeaf(roots: ZoneNode[], id: string): ZoneNode | null {
   return node?.tickSec != null ? node : null;
 }
 
+function findPathTo(nodes: ZoneNode[], targetId: string, acc: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const next = [...acc, node.id];
+    if (node.id === targetId) return next;
+    const found = findPathTo(node.children, targetId, next);
+    if (found) return found;
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────
 
 export default function Content() {
@@ -106,6 +116,7 @@ export default function Content() {
   const [roots,    setRoots]    = useState<ZoneNode[]>([]);
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [toast,    setToast]    = useState<string | null>(null);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -113,6 +124,25 @@ export default function Content() {
 
   // path = list of zone IDs navigated into (excludes "world" root)
   const [path, setPath] = useState<string[]>([]);
+
+  // 로드 시 탐험 중인 구역으로 자동 이동 + 토스트
+  useEffect(() => {
+    if (roots.length === 0 || !state.isExploring || !currentAction.zoneId) return;
+    const topLevel = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
+    const autoPath = findPathTo(topLevel, currentAction.zoneId);
+    if (autoPath) {
+      setPath(autoPath);
+      const zoneName = findNode(roots, currentAction.zoneId)?.name ?? currentAction.zoneId;
+      setToast(`◉ ${zoneName}에서 탐험 중`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roots]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const activeZone     = state.isExploring ? currentAction.zoneId : "";
   const activeLeaf     = findLeaf(roots, activeZone);
@@ -159,6 +189,7 @@ export default function Content() {
 
   return (
     <div className="content">
+      {toast && <div className="entry-toast">{toast}</div>}
       <div className="content-header">
         <div className="breadcrumb-row">
           {path.length > 0 && (
