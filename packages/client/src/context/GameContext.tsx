@@ -306,6 +306,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
       if (!isExploringRef.current) return;
       try {
         const result = await api.syncExploration();
+        // Reconcile server state only — no ADD_LOG (toasts come from client tick sim)
         dispatchStable({
           type:            'SERVER_SYNC',
           progress:        result.progress,
@@ -315,34 +316,6 @@ export function GameProvider({ children, username, initialStatus, initialResourc
           nextTickIn:      result.nextTickIn,
           tickSec:         result.tickSec,
         });
-        if (result.ticks > 0) {
-          for (const [key, amt] of Object.entries(result.resources)) {
-            if (amt <= 0) continue;
-            const name = RESOURCE_NAMES[key] ?? key;
-            dispatchStable({
-              type:  'ADD_LOG',
-              entry: {
-
-                segments: [
-                  { type: 'highlight', text: name },
-                  { type: 'plain',     text: ` ×${amt} 획득` },
-                ],
-              },
-            });
-          }
-          if (result.jobPointsGained > 0 && result.jobType) {
-            dispatchStable({
-              type:  'ADD_LOG',
-              entry: {
-
-                segments: [
-                  { type: 'good',  text: `+${(result.jobPointsGained / 100).toFixed(2)}` },
-                  { type: 'plain', text: ' 잡포 획득' },
-                ],
-              },
-            });
-          }
-        }
       } catch (err) {
         console.warn('[sync] error:', err);
       }
