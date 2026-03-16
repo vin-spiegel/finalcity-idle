@@ -295,16 +295,20 @@ export default function Content() {
         {/* ── NPC 대화 / 맵 미리보기 ── */}
         {npcModal ? (
           <div className="npc-dialog-wrap">
-            <div className="npc-dialog-portrait">
-              <img src={avatar} alt={npcModal.name} />
-            </div>
-            <div className="npc-dialog-content">
-              <div className="npc-dialog-name">{npcModal.name}</div>
-              <div className="npc-dialog-sub">탐험자</div>
-              <div className="npc-dialog-divider">┄ 대화 ┄</div>
-              <div className="npc-dialog-lines">
-                {npcModal.lines.map((line, i) => <p key={i}>{line}</p>)}
+            <span className="modal-corner modal-corner--tl" />
+            <span className="modal-corner modal-corner--tr" />
+            <span className="modal-corner modal-corner--bl" />
+            <span className="modal-corner modal-corner--br" />
+            <div className="modal-header">
+              <div className="modal-image-wrap">
+                <img className="modal-image" src={avatar} alt={npcModal.name} />
               </div>
+              <div className="modal-label">{npcModal.name}</div>
+              <div className="modal-sublabel">탐험자</div>
+            </div>
+            <div className="modal-divider"><span>대화</span></div>
+            <div className="modal-body">
+              {npcModal.lines.map((line, i) => <p key={i}>{line}</p>)}
             </div>
           </div>
         ) : (
@@ -428,12 +432,9 @@ export default function Content() {
                       className="nav-row nav-row--npc"
                       onClick={() => setNpcModal({ name: npcName, lines: npcDialog(npcName, leaf.id, i) })}
                     >
+                      <img className="nav-row-avatar" src={avatar} alt={npcName} />
                       <div className="nav-row-info">
-                        <div className="nav-row-name">◉ {action} 중</div>
-                        <div className="nav-row-badges">
-                          <span className="badge">{npcName}</span>
-                          <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
-                        </div>
+                        <div className="nav-row-name">{npcName}</div>
                       </div>
                       <div className="nav-row-arrow">›</div>
                     </div>
