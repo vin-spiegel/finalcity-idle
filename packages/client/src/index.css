@@ -656,6 +656,9 @@ body {
   80%  { opacity: 1; }
   100% { opacity: 0; }
 }
+.entry-toast--log {
+  animation-duration: 2.2s;
+}
 
 .content {
   position: relative;

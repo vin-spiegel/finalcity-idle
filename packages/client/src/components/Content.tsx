@@ -178,11 +178,12 @@ export default function Content() {
   const [toast,     setToast]     = useState<string | null>(null);
   const [npcModal,  setNpcModal]  = useState<{ name: string; lines: string[] } | null>(null);
 
-  type LogToast = { id: number; entry: (typeof logs)[0] };
-  const [toastLogs,    setToastLogs]    = useState<LogToast[]>([]);
-  const toastIdRef     = useRef(0);
+  type LogEntry = (typeof logs)[0];
+  const [logQueue,  setLogQueue]  = useState<LogEntry[]>([]);
+  const [logToast,  setLogToast]  = useState<LogEntry | null>(null);
   const prevLogsLenRef = useRef<number | null>(null);
 
+  // 새 로그 항목 감지 → 큐에 추가
   useEffect(() => {
     if (prevLogsLenRef.current === null) {
       prevLogsLenRef.current = logs.length;
@@ -191,13 +192,18 @@ export default function Content() {
     const newCount = logs.length - prevLogsLenRef.current;
     prevLogsLenRef.current = logs.length;
     if (newCount <= 0) return;
-    const newEntries = logs.slice(0, newCount);
-    const items: LogToast[] = newEntries.map(entry => ({ id: ++toastIdRef.current, entry }));
-    setToastLogs(prev => [...prev, ...items].slice(-6));
-    items.forEach(item => {
-      setTimeout(() => setToastLogs(prev => prev.filter(t => t.id !== item.id)), 3500);
-    });
+    setLogQueue(prev => [...prev, ...logs.slice(0, newCount)]);
   }, [logs]);
+
+  // 큐에서 하나씩 꺼내 토스트로 표시
+  useEffect(() => {
+    if (logToast || logQueue.length === 0) return;
+    const [next, ...rest] = logQueue;
+    setLogToast(next);
+    setLogQueue(rest);
+    const t = setTimeout(() => setLogToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [logToast, logQueue]);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -281,6 +287,17 @@ export default function Content() {
   return (
     <div className="content">
       {toast && <div className="entry-toast">{toast}</div>}
+      {!toast && logToast && (
+        <div className="entry-toast entry-toast--log" aria-live="polite">
+          <span className="log-time">{logToast.time}</span>
+          {' '}
+          {logToast.segments.map((seg, j) =>
+            seg.type === "plain"
+              ? <span key={j}>{seg.text}</span>
+              : <span key={j} className={seg.type}>{seg.text}</span>
+          )}
+        </div>
+      )}
       <div className="content-header">
         <div className="breadcrumb-row">
           {path.length > 0 && (
@@ -313,23 +330,6 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── 로그 토스트 스택 ── */}
-        {toastLogs.length > 0 && (
-          <div className="log-toast-stack" aria-live="polite">
-            {toastLogs.map(t => (
-              <div key={t.id} className="log-toast">
-                <span className="log-time">{t.entry.time}</span>
-                <span className="log-text">
-                  {t.entry.segments.map((seg, j) =>
-                    seg.type === "plain"
-                      ? <span key={j}>{seg.text}</span>
-                      : <span key={j} className={seg.type}>{seg.text}</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* ── NPC 대화 / 맵 미리보기 ── */}
         {npcModal ? (
