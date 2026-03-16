@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGame } from './context/GameContext';
 import Topbar from './components/Topbar';
 import Content from './components/Content';
 import InventoryView from './components/InventoryView';
@@ -142,6 +143,33 @@ function LoginScreen() {
 }
 
 function AppLayout() {
+  const { state: { logs } } = useGame();
+
+  type LogEntry = (typeof logs)[0];
+  const [logQueue,     setLogQueue]     = useState<LogEntry[]>([]);
+  const [logToast,     setLogToast]     = useState<LogEntry | null>(null);
+  const prevLogsLenRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevLogsLenRef.current === null) {
+      prevLogsLenRef.current = logs.length;
+      return;
+    }
+    const newCount = logs.length - prevLogsLenRef.current;
+    prevLogsLenRef.current = logs.length;
+    if (newCount <= 0) return;
+    setLogQueue(prev => [...prev, ...logs.slice(0, newCount)]);
+  }, [logs]);
+
+  useEffect(() => {
+    if (logToast || logQueue.length === 0) return;
+    const [next, ...rest] = logQueue;
+    setLogToast(next);
+    setLogQueue(rest);
+    const t = setTimeout(() => setLogToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [logToast, logQueue]);
+
   useEffect(() => {
     const audio = new Audio(bgm);
     audio.loop = true;
@@ -217,6 +245,17 @@ function AppLayout() {
     <div className="app-container">
       <div className="app-body">
         <div className="app-left">
+          {logToast && (
+            <div className="entry-toast entry-toast--log" aria-live="polite">
+              <span className="log-time">{logToast.time}</span>
+              {' '}
+              {logToast.segments.map((seg, j) =>
+                seg.type === "plain"
+                  ? <span key={j}>{seg.text}</span>
+                  : <span key={j} className={seg.type}>{seg.text}</span>
+              )}
+            </div>
+          )}
           <Topbar
             sidebarOpen={sidebarOpen}
             activeTab={activeTab}

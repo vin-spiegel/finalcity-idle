@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
@@ -178,32 +178,6 @@ export default function Content() {
   const [toast,     setToast]     = useState<string | null>(null);
   const [npcModal,  setNpcModal]  = useState<{ name: string; lines: string[] } | null>(null);
 
-  type LogEntry = (typeof logs)[0];
-  const [logQueue,  setLogQueue]  = useState<LogEntry[]>([]);
-  const [logToast,  setLogToast]  = useState<LogEntry | null>(null);
-  const prevLogsLenRef = useRef<number | null>(null);
-
-  // 새 로그 항목 감지 → 큐에 추가
-  useEffect(() => {
-    if (prevLogsLenRef.current === null) {
-      prevLogsLenRef.current = logs.length;
-      return;
-    }
-    const newCount = logs.length - prevLogsLenRef.current;
-    prevLogsLenRef.current = logs.length;
-    if (newCount <= 0) return;
-    setLogQueue(prev => [...prev, ...logs.slice(0, newCount)]);
-  }, [logs]);
-
-  // 큐에서 하나씩 꺼내 토스트로 표시
-  useEffect(() => {
-    if (logToast || logQueue.length === 0) return;
-    const [next, ...rest] = logQueue;
-    setLogToast(next);
-    setLogQueue(rest);
-    const t = setTimeout(() => setLogToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [logToast, logQueue]);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -287,17 +261,6 @@ export default function Content() {
   return (
     <div className="content">
       {toast && <div className="entry-toast">{toast}</div>}
-      {!toast && logToast && (
-        <div className="entry-toast entry-toast--log" aria-live="polite">
-          <span className="log-time">{logToast.time}</span>
-          {' '}
-          {logToast.segments.map((seg, j) =>
-            seg.type === "plain"
-              ? <span key={j}>{seg.text}</span>
-              : <span key={j} className={seg.type}>{seg.text}</span>
-          )}
-        </div>
-      )}
       <div className="content-header">
         <div className="breadcrumb-row">
           {path.length > 0 && (
