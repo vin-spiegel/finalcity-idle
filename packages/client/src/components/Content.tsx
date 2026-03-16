@@ -398,12 +398,11 @@ export default function Content() {
                     onClick={async () => {
                       if (isActive || starting || locked) return;
                       setStarting(true);
-                      // Optimistic: update UI immediately
                       dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
                       try {
                         await api.startExploration(leaf.id);
                       } catch {
-                        dispatch({ type: "STOP_EXPLORE" }); // rollback
+                        dispatch({ type: "STOP_EXPLORE" });
                       } finally {
                         setStarting(false);
                       }
@@ -418,12 +417,37 @@ export default function Content() {
                           : `▶ ${action} 시작`}
                       </div>
                       <div className="nav-row-badges">
-                        <span className="badge">◷ {leaf.tickSec}s</span>
-                        <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
-                        {isActive && <span className="badge badge--active">{action} 중</span>}
+                        {isActive
+                          ? <>
+                              <span className="badge">◷ {fmtElapsed(elapsed)}</span>
+                              <span className="badge">{progress.toFixed(1)}%</span>
+                            </>
+                          : <>
+                              <span className="badge">◷ {leaf.tickSec}s</span>
+                              <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
+                            </>
+                        }
                       </div>
                     </div>
-                    <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
+                    {isActive ? (
+                      <button
+                        className={`nav-row-cancel${stopping ? " nav-row-cancel--pending" : ""}`}
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (stopping) return;
+                          setStopping(true);
+                          dispatch({ type: "STOP_EXPLORE" });
+                          try { await api.stopExploration(); }
+                          catch { /* ok */ }
+                          finally { setStopping(false); }
+                        }}
+                      >
+                        {stopping ? "◌" : "✕"}
+                      </button>
+                    ) : (
+                      <div className="nav-row-arrow">{locked ? "🔒" : "▶"}</div>
+                    )}
                   </div>
                   {/* NPC 목록 */}
                   {zoneNpcs(leaf.id).map((npcName, i) => (
@@ -439,34 +463,6 @@ export default function Content() {
                       <div className="nav-row-arrow">›</div>
                     </div>
                   ))}
-
-                  {/* 탐색 취소 */}
-                  {isActive && (
-                    <div
-                      className={`nav-row nav-row--stop${stopping ? " nav-row--pending" : ""}`}
-                      onClick={async () => {
-                        if (stopping) return;
-                        setStopping(true);
-                        // Optimistic: update UI immediately
-                        dispatch({ type: "STOP_EXPLORE" });
-                        try {
-                          await api.stopExploration();
-                        } catch { /* server stop failed, but sync loop is now paused — ok */ }
-                        finally {
-                          setStopping(false);
-                        }
-                      }}
-                    >
-                      <div className="nav-row-info">
-                        <div className="nav-row-name">{stopping ? "◌ 취소 중…" : `✕ ${action} 취소`}</div>
-                        <div className="nav-row-badges">
-                          <span className="badge">◷ {fmtElapsed(elapsed)}</span>
-                          <span className="badge">{progress.toFixed(1)}%</span>
-                        </div>
-                      </div>
-                      <div className="nav-row-arrow">›</div>
-                    </div>
-                  )}
                 </>
               );
             })()
