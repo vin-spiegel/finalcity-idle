@@ -673,6 +673,38 @@ body {
   flex-direction: column;
   gap: 16px;
   padding-bottom: 56px;
+  position: relative;
+}
+
+.log-toast-stack {
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.log-toast {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  border-left: 2px solid var(--border-color);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  animation: log-toast-slide 3.5s ease forwards;
+}
+
+@keyframes log-toast-slide {
+  0%   { opacity: 0; transform: translateX(-6px); }
+  8%   { opacity: 1; transform: translateX(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .map-preview-wrap {

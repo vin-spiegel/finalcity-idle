@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
@@ -172,11 +172,32 @@ export default function Content() {
   const { state, dispatch, mapTickRef, navigateToActiveRef, zones: zoneRows } = useGame();
   const { currentAction, progress, logs, skills } = state;
 
-  const [roots,    setRoots]    = useState<ZoneNode[]>([]);
-  const [starting, setStarting] = useState(false);
-  const [stopping, setStopping] = useState(false);
-  const [toast,    setToast]    = useState<string | null>(null);
-  const [npcModal, setNpcModal] = useState<{ name: string; lines: string[] } | null>(null);
+  const [roots,     setRoots]     = useState<ZoneNode[]>([]);
+  const [starting,  setStarting]  = useState(false);
+  const [stopping,  setStopping]  = useState(false);
+  const [toast,     setToast]     = useState<string | null>(null);
+  const [npcModal,  setNpcModal]  = useState<{ name: string; lines: string[] } | null>(null);
+
+  type LogToast = { id: number; entry: (typeof logs)[0] };
+  const [toastLogs,    setToastLogs]    = useState<LogToast[]>([]);
+  const toastIdRef     = useRef(0);
+  const prevLogsLenRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevLogsLenRef.current === null) {
+      prevLogsLenRef.current = logs.length;
+      return;
+    }
+    const newCount = logs.length - prevLogsLenRef.current;
+    prevLogsLenRef.current = logs.length;
+    if (newCount <= 0) return;
+    const newEntries = logs.slice(0, newCount);
+    const items: LogToast[] = newEntries.map(entry => ({ id: ++toastIdRef.current, entry }));
+    setToastLogs(prev => [...prev, ...items].slice(-6));
+    items.forEach(item => {
+      setTimeout(() => setToastLogs(prev => prev.filter(t => t.id !== item.id)), 3500);
+    });
+  }, [logs]);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -291,6 +312,24 @@ export default function Content() {
       </div>
 
       <div className="content-body">
+
+        {/* ── 로그 토스트 스택 ── */}
+        {toastLogs.length > 0 && (
+          <div className="log-toast-stack" aria-live="polite">
+            {toastLogs.map(t => (
+              <div key={t.id} className="log-toast">
+                <span className="log-time">{t.entry.time}</span>
+                <span className="log-text">
+                  {t.entry.segments.map((seg, j) =>
+                    seg.type === "plain"
+                      ? <span key={j}>{seg.text}</span>
+                      : <span key={j} className={seg.type}>{seg.text}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── NPC 대화 / 맵 미리보기 ── */}
         {npcModal ? (
