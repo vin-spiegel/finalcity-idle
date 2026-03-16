@@ -360,15 +360,18 @@ export default function Content() {
                     <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
                   </div>
                   {/* NPC 목록 */}
-                  <div className="npc-list">
-                    {zoneNpcs(leaf.id).map((name, i) => (
-                      <div key={i} className="npc-row">
-                        <span className="npc-dot">●</span>
-                        <span className="npc-name">{name}</span>
-                        <span className="npc-action">{action} 중</span>
+                  {zoneNpcs(leaf.id).map((npcName, i) => (
+                    <div key={i} className="nav-row nav-row--npc">
+                      <div className="nav-row-info">
+                        <div className="nav-row-name">◉ {action} 중</div>
+                        <div className="nav-row-badges">
+                          <span className="badge">{npcName}</span>
+                          <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="nav-row-arrow">●</div>
+                    </div>
+                  ))}
 
                   {/* 탐색 취소 */}
                   {isActive && (
