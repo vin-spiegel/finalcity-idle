@@ -338,6 +338,9 @@ export function GameProvider({ children, username, initialStatus, initialResourc
       }
     };
 
+    // Initial sync on mount — applies offline ticks from last session
+    doSync();
+
     const onVisibility = () => {
       if (document.visibilityState === 'visible') doSync();
     };
