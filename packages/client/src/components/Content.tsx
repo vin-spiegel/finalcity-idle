@@ -305,9 +305,6 @@ export default function Content() {
               <div className="npc-dialog-lines">
                 {npcModal.lines.map((line, i) => <p key={i}>{line}</p>)}
               </div>
-              <button className="npc-dialog-close" onClick={() => setNpcModal(null)}>
-                › 자리를 뜬다
-              </button>
             </div>
           </div>
         ) : (
@@ -350,9 +347,16 @@ export default function Content() {
         </div>
         )}
 
-        {/* ── Zone 리스트 ── */}
+        {/* ── Zone 리스트 / NPC 대화 액션 ── */}
         <div className="nav-list">
-          {roots.length === 0 ? (
+          {npcModal ? (
+            <div className="nav-row" onClick={() => setNpcModal(null)}>
+              <div className="nav-row-info">
+                <div className="nav-row-name">자리를 뜬다</div>
+              </div>
+              <div className="nav-row-arrow">›</div>
+            </div>
+          ) : roots.length === 0 ? (
             <>
               {[0.9, 0.65, 0.75, 0.55].map((w, i) => (
                 <div key={i} className="nav-row nav-row--skeleton">
