@@ -136,11 +136,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 export const CIRCLE_CIRCUMFERENCE = 75.4; // 2π × r=12
 
 type GameContextValue = {
-  state:          GameState;
-  dispatch:       React.Dispatch<GameAction>;
-  circleTickRef:  RefObject<SVGCircleElement | null>;
-  mapTickRef:     RefObject<HTMLDivElement | null>;
-  zones:          ZoneRow[];
+  state:                 GameState;
+  dispatch:              React.Dispatch<GameAction>;
+  circleTickRef:         RefObject<SVGCircleElement | null>;
+  mapTickRef:            RefObject<HTMLDivElement | null>;
+  zones:                 ZoneRow[];
+  navigateToActiveRef:   React.MutableRefObject<(() => void) | null>;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -207,8 +208,9 @@ export function GameProvider({ children, username, initialStatus, initialResourc
 
   const [state, dispatch] = useReducer(gameReducer, init);
 
-  const circleTickRef = useRef<SVGCircleElement>(null);
-  const mapTickRef    = useRef<HTMLDivElement>(null);
+  const circleTickRef        = useRef<SVGCircleElement>(null);
+  const mapTickRef           = useRef<HTMLDivElement>(null);
+  const navigateToActiveRef  = useRef<(() => void) | null>(null);
 
   // Stable refs so RAF + async closures don't go stale
   const actionRef      = useRef(state.currentAction);
@@ -220,7 +222,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
   const dispatchStable = useCallback(dispatch, []);
 
   const providerValue = useMemo(
-    () => ({ state, dispatch, circleTickRef, mapTickRef, zones: initialZones ?? [] }),
+    () => ({ state, dispatch, circleTickRef, mapTickRef, navigateToActiveRef, zones: initialZones ?? [] }),
     [state, dispatch, initialZones],
   );
 

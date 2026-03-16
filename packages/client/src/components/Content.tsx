@@ -110,7 +110,7 @@ function findPathTo(nodes: ZoneNode[], targetId: string, acc: string[] = []): st
 // ─── Component ────────────────────────────────────────────────
 
 export default function Content() {
-  const { state, dispatch, mapTickRef, zones: zoneRows } = useGame();
+  const { state, dispatch, mapTickRef, navigateToActiveRef, zones: zoneRows } = useGame();
   const { currentAction, progress, logs, skills } = state;
 
   const [roots,    setRoots]    = useState<ZoneNode[]>([]);
@@ -124,6 +124,16 @@ export default function Content() {
 
   // path = list of zone IDs navigated into (excludes "world" root)
   const [path, setPath] = useState<string[]>([]);
+
+  // 탐험 중인 구역으로 이동하는 함수 — Topbar에서 호출 가능하도록 ref 등록
+  useEffect(() => {
+    navigateToActiveRef.current = () => {
+      if (!state.isExploring || !currentAction.zoneId || roots.length === 0) return;
+      const topLevel = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
+      const autoPath = findPathTo(topLevel, currentAction.zoneId);
+      if (autoPath) setPath(autoPath);
+    };
+  });
 
   // 로드 시 탐험 중인 구역으로 자동 이동 + 토스트
   useEffect(() => {
