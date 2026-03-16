@@ -168,6 +168,14 @@ const RESOURCE_NAMES: Record<string, string> = {
 };
 
 
+const REGION_PALETTES: Record<string, { primary: string; glow: string }> = {
+  'kirtas':           { primary: '#00e5ff', glow: 'rgba(0, 229, 255, 0.10)' },
+  'red-canyon':       { primary: '#ff5533', glow: 'rgba(255, 85, 51,  0.10)' },
+  'gray-plateau':     { primary: '#a8b0b8', glow: 'rgba(168, 176, 184, 0.10)' },
+  'final-city-outer': { primary: '#cc44ff', glow: 'rgba(204, 68, 255,  0.10)' },
+};
+const DEFAULT_PALETTE = { primary: '#b58900', glow: 'rgba(181, 137, 0, 0.10)' };
+
 // ─── Provider ────────────────────────────────────────────────
 
 type GameProviderProps = {
@@ -249,6 +257,15 @@ export function GameProvider({ children, username, initialStatus, initialResourc
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
   }, []);
+
+  // ── Region color theme ────────────────────────────────────
+  useEffect(() => {
+    const zone    = zonesRef.current.find(z => z.id === state.currentAction.zoneId);
+    const palette = REGION_PALETTES[zone?.parentId ?? ''] ?? DEFAULT_PALETTE;
+    const root    = document.documentElement;
+    root.style.setProperty('--region-primary', palette.primary);
+    root.style.setProperty('--region-glow',    palette.glow);
+  }, [state.currentAction.zoneId]);
 
   // ── Client-side tick simulation (logs + toasts, no server request) ───
   const zonesRef = useRef(initialZones ?? []);

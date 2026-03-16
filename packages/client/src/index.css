@@ -53,6 +53,10 @@
   --green-dim:   #859900;
   --amber:       #ffff00;
   --amber-dim:   #b58900;
+
+  /* Region theme — overridden by JS on zone change */
+  --region-primary: #b58900;
+  --region-glow:    rgba(181, 137, 0, 0.12);
   --red:         #ff0000;
   --red-dim:     #dc322f;
   --magenta:     #ff00ff;
@@ -214,8 +218,8 @@ body {
   overflow: hidden;
   max-width: 220px;
 }
-.top-action-dot   { color: var(--amber-dim); font-size: 8px; flex-shrink: 0; }
-.top-action-label { color: var(--amber-dim); flex-shrink: 0; opacity: 0.8; }
+.top-action-dot   { color: var(--region-primary); font-size: 8px; flex-shrink: 0; }
+.top-action-label { color: var(--region-primary); flex-shrink: 0; opacity: 0.8; }
 .top-action-sep   { color: var(--border); flex-shrink: 0; }
 .top-action-zone  { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -527,9 +531,9 @@ body {
 
 .menu-active-dot {
   width: 7px; height: 7px;
-  background: var(--amber);
+  background: var(--region-primary);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--amber);
+  box-shadow: 0 0 6px var(--region-primary);
 }
 
 /* ═══ SKILL ITEMS ═══ */
@@ -642,8 +646,8 @@ body {
   left: 50%;
   transform: translateX(-50%);
   background: var(--panel);
-  border: 1px solid var(--amber-dim);
-  color: var(--amber-dim);
+  border: 1px solid var(--region-primary);
+  color: var(--region-primary);
   font-size: 12px;
   padding: 7px 16px;
   letter-spacing: 0.5px;
@@ -823,7 +827,7 @@ body {
 }
 
 .map-hud-pct {
-  color: var(--amber-dim);
+  color: var(--region-primary);
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
@@ -859,8 +863,8 @@ body {
 .map-hud-tick-fill {
   height: 100%;
   width: 0%;
-  background: var(--amber-dim);
-  box-shadow: 0 0 4px rgba(181, 137, 0, 0.7);
+  background: var(--region-primary);
+  box-shadow: 0 0 4px var(--region-glow);
 }
 
 .map-hud-log {
@@ -933,7 +937,7 @@ body {
 }
 
 .explore-card-action {
-  color: var(--amber-dim);
+  color: var(--region-primary);
 }
 
 .explore-card-dot {
@@ -952,7 +956,7 @@ body {
 .explore-card-pct {
   font-size: 22px;
   font-weight: 700;
-  color: var(--amber-dim);
+  color: var(--region-primary);
   white-space: nowrap;
   line-height: 1;
   padding-top: 2px;
@@ -966,7 +970,7 @@ body {
 
 .explore-card-bar-fill {
   height: 100%;
-  background: var(--amber-dim);
+  background: var(--region-primary);
   width: 0%;
 }
 
@@ -1165,7 +1169,7 @@ body {
 }
 
 .zone-detail-pct {
-  color: var(--amber-dim);
+  color: var(--region-primary);
   font-size: 11px;
 }
 
@@ -1204,9 +1208,9 @@ body {
 .nav-row:hover { background: rgba(255,255,255,0.03); }
 
 .nav-row--active {
-  border-left: 2px solid var(--amber-dim);
+  border-left: 2px solid var(--region-primary);
   padding-left: 14px;
-  background: rgba(181,137,0,0.04);
+  background: var(--region-glow);
 }
 
 .nav-row--pending {
@@ -1331,8 +1335,8 @@ body {
 .nav-row-cancel--pending { opacity: 0.4; cursor: default; }
 
 .badge--active {
-  color: var(--amber-dim);
-  border-color: var(--amber-dim);
+  color: var(--region-primary);
+  border-color: var(--region-primary);
 }
 
 /* ── Action Panel (Depth 3) ─────────────────────────────────── */
