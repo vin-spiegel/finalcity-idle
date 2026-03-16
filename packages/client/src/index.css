@@ -1210,11 +1210,10 @@ body {
   margin-left: auto;
 }
 
-/* ── NPC rows (same nav-row shape, non-interactive) ── */
+/* ── NPC rows ── */
 .nav-row--npc {
-  opacity: 0.45;
-  cursor: default;
-  pointer-events: none;
+  opacity: 0.55;
+  cursor: pointer;
 }
 
 .nav-row-art {

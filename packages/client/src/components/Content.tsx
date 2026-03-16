@@ -23,6 +23,7 @@ const ZONE_IMAGES: Record<string, string> = {
 import { useGame } from "../context/GameContext";
 import { api } from "../lib/api";
 import type { ZoneRow } from "../lib/api";
+import Modal from "./Modal";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -59,6 +60,30 @@ const HUD_LOG_COUNT = 4;
 const NPC_TITLES = ["방랑자", "순환회원", "잡역부", "채집꾼", "탐색자", "유랑자", "개척자", "폐허사냥꾼"];
 const NPC_NAMES  = ["카이", "시오", "펜", "카라", "렌", "미르", "토르", "유이", "하켄", "세라", "나린", "다온", "루카", "에이", "볼크", "이든"];
 
+const NPC_GENERIC_LINES = [
+  "이 구역은 처음이에요?",
+  "자원 채집 효율이 꽤 좋은 편이에요.",
+  "조심하세요. 가끔 이상한 마나 파동이 감지된대요.",
+  "순환회가 이 구역 출입을 제한하려 했는데, 그냥 무시하고 왔어요.",
+  "오늘은 피폭 수치가 평소보다 낮네요.",
+  "파편 줍는 데 30분 걸릴 때도 있는데, 가끔 희귀한 것도 나오니까요.",
+  "마나 결정 품질이 여기가 좋다고 소문이 나서 왔어요.",
+  "폐허 사냥꾼들이 자주 지나가는데, 눈 마주치지 않는 게 나아요.",
+  "여기선 혼자 다니지 않는 게 기본이에요.",
+  "이 구역 지형이 낯설어서 처음엔 많이 헤맸어요.",
+];
+
+const NPC_REASON: Record<string, string> = {
+  "방랑자":    "딱히 목적 없이 돌아다니다 보니까 여기까지 왔어요.",
+  "순환회원":  "조직에서 이 구역 자원 조사 임무를 줬어요.",
+  "채집꾼":    "이 근처 채집이 제 생계예요.",
+  "잡역부":    "부탁받은 일이 있어서요. 자세한 건 말 못 해요.",
+  "탐색자":    "이 구역 지도 데이터가 부족해서 직접 와봤어요.",
+  "유랑자":    "여기저기 다니다 보면 재밌는 게 나오더라고요.",
+  "개척자":    "언젠가 여기에 베이스캠프 만들 생각이에요.",
+  "폐허사냥꾼":"위험한 곳일수록 값진 게 있거든요.",
+};
+
 function lcg(seed: number) {
   return ((seed * 1664525 + 1013904223) >>> 0) / 0x100000000;
 }
@@ -73,6 +98,19 @@ function zoneNpcs(zoneId: string, count = 3): string[] {
     const name  = NPC_NAMES[Math.floor(b * NPC_NAMES.length)];
     return `${title}_${name}`;
   });
+}
+
+function npcDialog(npcName: string, zoneId: string, idx: number): string[] {
+  let seed = 0;
+  for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
+  seed ^= (idx + 1) * 0xf00dbabe;
+
+  const title  = npcName.split("_")[0];
+  const reason = NPC_REASON[title] ?? "딱히 이유는 없어요.";
+  const i1     = Math.floor(lcg(seed ^ 0x1111) * NPC_GENERIC_LINES.length);
+  let   i2     = Math.floor(lcg(seed ^ 0x2222) * NPC_GENERIC_LINES.length);
+  if (i2 === i1) i2 = (i2 + 1) % NPC_GENERIC_LINES.length;
+  return [reason, NPC_GENERIC_LINES[i1], NPC_GENERIC_LINES[i2]];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -138,6 +176,7 @@ export default function Content() {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [toast,    setToast]    = useState<string | null>(null);
+  const [npcModal, setNpcModal] = useState<{ name: string; lines: string[] } | null>(null);
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -361,7 +400,11 @@ export default function Content() {
                   </div>
                   {/* NPC 목록 */}
                   {zoneNpcs(leaf.id).map((npcName, i) => (
-                    <div key={i} className="nav-row nav-row--npc">
+                    <div
+                      key={i}
+                      className="nav-row nav-row--npc"
+                      onClick={() => setNpcModal({ name: npcName, lines: npcDialog(npcName, leaf.id, i) })}
+                    >
                       <div className="nav-row-info">
                         <div className="nav-row-name">◉ {action} 중</div>
                         <div className="nav-row-badges">
@@ -369,7 +412,7 @@ export default function Content() {
                           <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
                         </div>
                       </div>
-                      <div className="nav-row-arrow">●</div>
+                      <div className="nav-row-arrow">›</div>
                     </div>
                   ))}
 
@@ -432,6 +475,19 @@ export default function Content() {
         </div>
 
       </div>
+
+      <Modal
+        isOpen={npcModal !== null}
+        imageSrc={avatar}
+        imageAlt={npcModal?.name ?? ""}
+        label={npcModal?.name ?? ""}
+        sublabel="탐험자"
+        dividerLabel="대화"
+        body={npcModal?.lines ?? []}
+        choices={[{ id: "close", label: "자리를 뜬다", tone: "neutral" }]}
+        onClose={() => setNpcModal(null)}
+        onChoice={() => setNpcModal(null)}
+      />
     </div>
   );
 }
