@@ -1210,6 +1210,35 @@ body {
   margin-left: auto;
 }
 
+/* ── NPC presence list (leaf view) ── */
+.npc-list {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border-dim);
+}
+.npc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  font-size: 11px;
+}
+.npc-dot {
+  font-size: 6px;
+  color: var(--border);
+  flex-shrink: 0;
+}
+.npc-name {
+  flex: 1;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+.npc-action {
+  color: var(--text-dim);
+  opacity: 0.45;
+  font-size: 10px;
+}
+
 .nav-row-art {
   font-family: monospace;
   font-size: 9px;

@@ -54,6 +54,27 @@ const DANGER_CLASS: Record<DangerLevel, string> = {
 
 const HUD_LOG_COUNT = 4;
 
+// ─── NPC presence ─────────────────────────────────────────────
+
+const NPC_TITLES = ["방랑자", "순환회원", "잡역부", "채집꾼", "탐색자", "유랑자", "개척자", "폐허사냥꾼"];
+const NPC_NAMES  = ["카이", "시오", "펜", "카라", "렌", "미르", "토르", "유이", "하켄", "세라", "나린", "다온", "루카", "에이", "볼크", "이든"];
+
+function lcg(seed: number) {
+  return ((seed * 1664525 + 1013904223) >>> 0) / 0x100000000;
+}
+
+function zoneNpcs(zoneId: string, count = 3): string[] {
+  let seed = 0;
+  for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
+  return Array.from({ length: count }, (_, i) => {
+    const a = lcg(seed ^ (i * 0xdeadbeef));
+    const b = lcg(seed ^ (i * 0xcafebabe));
+    const title = NPC_TITLES[Math.floor(a * NPC_TITLES.length)];
+    const name  = NPC_NAMES[Math.floor(b * NPC_NAMES.length)];
+    return `${title}_${name}`;
+  });
+}
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 function fmtElapsed(sec: number) {
@@ -338,6 +359,17 @@ export default function Content() {
                     </div>
                     <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
                   </div>
+                  {/* NPC 목록 */}
+                  <div className="npc-list">
+                    {zoneNpcs(leaf.id).map((name, i) => (
+                      <div key={i} className="npc-row">
+                        <span className="npc-dot">●</span>
+                        <span className="npc-name">{name}</span>
+                        <span className="npc-action">{action} 중</span>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* 탐색 취소 */}
                   {isActive && (
                     <div
