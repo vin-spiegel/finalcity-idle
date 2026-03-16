@@ -254,13 +254,16 @@ export function GameProvider({ children, username, initialStatus, initialResourc
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // ── Server sync loop ──────────────────────────────────────
+  // ── Server sync loop (tick-aligned) ──────────────────────────────────
   useEffect(() => {
-    const sync = async () => {
+    if (!state.isExploring) return;
+
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const doSync = async () => {
       if (!isExploringRef.current) return;
       try {
         const result = await api.syncExploration();
-        console.log('[sync]', result);
         dispatchStable({
           type:            'SERVER_SYNC',
           progress:        result.progress,
@@ -298,23 +301,38 @@ export function GameProvider({ children, username, initialStatus, initialResourc
             });
           }
         }
+        // 다음 틱 경계에 정확히 sync 예약
+        if (isExploringRef.current) {
+          timeoutId = setTimeout(doSync, Math.max(500, result.nextTickIn * 1000));
+        }
       } catch (err) {
         console.warn('[sync] error:', err);
+        if (isExploringRef.current) {
+          timeoutId = setTimeout(doSync, 5_000);
+        }
       }
     };
 
-    const interval = setInterval(sync, 30_000);
+    // 첫 sync: 현재 틱 잔여 시간 계산
+    const action       = actionRef.current;
+    const tickPeriodMs = 1000 / action.speedPerSec;
+    const elapsedMs    = Date.now() - action.createdAt;
+    const firstDelayMs = tickPeriodMs - (elapsedMs % tickPeriodMs);
+    timeoutId = setTimeout(doSync, Math.max(500, firstDelayMs));
 
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') sync();
+      if (document.visibilityState === 'visible') {
+        clearTimeout(timeoutId);
+        doSync();
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      clearInterval(interval);
+      clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [dispatchStable]);
+  }, [state.isExploring, dispatchStable]);
 
   return <GameContext.Provider value={providerValue}>{children}</GameContext.Provider>;
 }
