@@ -164,10 +164,15 @@ export default function Content() {
   const topLevel    = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
   const children    = currentNode ? currentNode.children : topLevel;
 
-  // Map HUD (비탐험 상태에서만 표시)
-  const hudZoneName = currentNode?.name ?? "세계 지도";
-  const hudSubLine  = currentNode ? currentNode.dangerLevel : "탐색 가능한 구역";
-  const hudDesc     = currentNode?.desc ?? "지도를 탐색하여 다음 목적지를 선택하십시오.";
+  // Map HUD: only show active exploration overlay when viewing the active leaf
+  const showActiveHud  = activeLeaf != null && state.isExploring && currentNode?.id === activeZone;
+  const hudZoneName    = showActiveHud ? activeLeaf!.name : (currentNode?.name ?? "세계 지도");
+  const hudSubLine     = showActiveHud
+    ? `${activeLeaf!.desc.slice(0, 40)}…`
+    : currentNode
+      ? `${currentNode.dangerLevel}`
+      : "탐색 가능한 구역";
+  const hudDesc        = showActiveHud ? activeLeaf!.desc : (currentNode?.desc ?? "지도를 탐색하여 다음 목적지를 선택하십시오.");
 
   const viewKey = currentNode?.id ?? "world";
 
@@ -227,62 +232,44 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── 탐험 카드 / 맵 미리보기 ── */}
-        {state.isExploring && activeLeaf ? (
-          <div className="explore-card">
-            <div className="explore-card-top">
-              <div className="explore-card-info">
-                <div className="explore-card-zone">{activeLeaf.name}</div>
-                <div className="explore-card-sub">
-                  <span className="explore-card-action">{activeLeaf.actionType ?? "탐험"} 중</span>
-                  <span className="explore-card-dot">·</span>
-                  <span className="explore-card-elapsed">◷ {fmtElapsed(elapsed)}</span>
-                  {activeLeaf.jobType && (
-                    <>
-                      <span className="explore-card-dot">·</span>
-                      <span className="explore-card-skill-lv">Lv.{(skills[activeLeaf.jobType] ?? 0).toFixed(2)}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="explore-card-pct">{progress.toFixed(1)}%</div>
+        {/* ── 맵 미리보기 ── */}
+        <div className="map-preview-wrap" data-view={viewKey}>
+          <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
+          <div className="map-region-tint" />
+
+          <div className="map-hud-top">
+            <div className="map-hud-title-row">
+              <span className="map-hud-zone-name">{hudZoneName}</span>
+              {showActiveHud && <span className="map-hud-pct">{progress.toFixed(1)}%</span>}
             </div>
-            <div className="explore-card-bar">
-              <div ref={mapTickRef} className="explore-card-bar-fill" />
-            </div>
-            {hudLogs.length > 0 && (
-              <div className="explore-card-log">
-                {[...hudLogs].reverse().map((entry, i) => {
-                  const age = hudLogs.length - 1 - i;
-                  return (
-                    <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                      <span className="log-time">{entry.time}</span>
-                      <span className="log-text">
-                        {entry.segments.map((seg, j) =>
-                          seg.type === "plain"
-                            ? <span key={j}>{seg.text}</span>
-                            : <span key={j} className={seg.type}>{seg.text}</span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div className="map-hud-sub">{hudSubLine}</div>
+            <div className="map-hud-desc">{hudDesc}</div>
+            {showActiveHud && <div className="map-hud-elapsed">◷ {fmtElapsed(elapsed)}</div>}
           </div>
-        ) : (
-          <div className="map-preview-wrap" data-view={viewKey}>
-            <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
-            <div className="map-region-tint" />
-            <div className="map-hud-top">
-              <div className="map-hud-title-row">
-                <span className="map-hud-zone-name">{hudZoneName}</span>
+
+          {showActiveHud && (
+            <div className="map-hud-log">
+              {hudLogs.length > 0 && [...hudLogs].reverse().map((entry, i) => {
+                const age = hudLogs.length - 1 - i;
+                return (
+                  <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
+                    <span className="log-time">{entry.time}</span>
+                    <span className="log-text">
+                      {entry.segments.map((seg, j) =>
+                        seg.type === "plain"
+                          ? <span key={j}>{seg.text}</span>
+                          : <span key={j} className={seg.type}>{seg.text}</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="map-hud-tick-bar">
+                <div ref={mapTickRef} className="map-hud-tick-fill" />
               </div>
-              <div className="map-hud-sub">{hudSubLine}</div>
-              <div className="map-hud-desc">{hudDesc}</div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── Zone 리스트 ── */}
         <div className="nav-list">
