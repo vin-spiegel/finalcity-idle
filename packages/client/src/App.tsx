@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGame } from './context/GameContext';
 import Topbar from './components/Topbar';
 import Content from './components/Content';
 import InventoryView from './components/InventoryView';
@@ -142,6 +143,26 @@ function LoginScreen() {
 }
 
 function AppLayout() {
+  const { state: { logs } } = useGame();
+
+  type LogEntry = (typeof logs)[0];
+  const [logToast,      setLogToast]      = useState<LogEntry | null>(null);
+  const prevFirstLogRef = useRef<LogEntry | null>(null);
+
+  // 새 로그 오면 바로 현재 토스트 교체 (queue 없음)
+  useEffect(() => {
+    if (logs.length === 0) { prevFirstLogRef.current = null; return; }
+    if (logs[0] === prevFirstLogRef.current) return;
+    prevFirstLogRef.current = logs[0];
+    setLogToast(logs[0]);
+  }, [logs]);
+
+  useEffect(() => {
+    if (!logToast) return;
+    const t = setTimeout(() => setLogToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [logToast]);
+
   useEffect(() => {
     const audio = new Audio(bgm);
     audio.loop = true;
@@ -223,6 +244,15 @@ function AppLayout() {
             onTabClick={handleTabClick}
           />
           <div className="main">
+            {logToast && (
+              <div className="entry-toast entry-toast--log" aria-live="polite">
+                {logToast.segments.map((seg, j) =>
+                  seg.type === "plain"
+                    ? <span key={j}>{seg.text}</span>
+                    : <span key={j} className={seg.type}>{seg.text}</span>
+                )}
+              </div>
+            )}
             {tabbarTab === 'map' && <Content />}
             {tabbarTab === 'inventory' && <InventoryView />}
             {tabbarTab === 'profile' && <ProfileView />}

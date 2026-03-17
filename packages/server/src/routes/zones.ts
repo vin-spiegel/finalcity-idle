@@ -17,6 +17,7 @@ zonesRoute.get("/", async (c) => {
       dangerLevel: zones.dangerLevel,
       tickSec:     zones.tickSec,
       jobType:     zones.jobType,
+      dropTable:   zones.dropTable,
     })
     .from(zones)
     .orderBy(zones.levelReq);

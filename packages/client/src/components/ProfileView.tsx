@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useGame } from '../context/GameContext';
 import avatar from '../assets/image.png';
 
@@ -23,8 +24,19 @@ const SKILL_MILESTONES: Record<string, { level: number; label: string }[]> = {
 };
 
 export default function ProfileView() {
-  const { state } = useGame();
+  const { state, zones } = useGame();
   const { character, equipment, skills } = state;
+
+  // jobType → display label from zone data (fallback for names not in SKILL_NAMES)
+  const jobLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const z of zones) {
+      if (z.jobType && z.actionType && !map[z.jobType]) {
+        map[z.jobType] = z.actionType;
+      }
+    }
+    return map;
+  }, [zones]);
 
   const hpPct = (character.hp / character.maxHp) * 100;
   const expPct = (character.exp / character.maxExp) * 100;
@@ -71,11 +83,12 @@ export default function ProfileView() {
               const milestoneLevel = nextMilestone ? nextMilestone.level : (Math.floor(level / 10) + 1) * 10;
               const progressPct = Math.min((level / milestoneLevel) * 100, 100);
               const isLocked = level === 0;
+              const displayName = name || jobLabels[id] || id;
 
               return (
                 <div key={id} style={{ opacity: isLocked ? 0.45 : 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                    <span>{name}</span>
+                    <span>{displayName}</span>
                     <span style={{ color: 'var(--color-highlight)' }}>Lv.{level.toFixed(2)}</span>
                   </div>
                   <div className="progress-bar" style={{ height: 6, marginBottom: 4 }}>

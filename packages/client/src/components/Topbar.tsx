@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
-  const { state, circleTickRef, zones } = useGame();
+  const { state, circleTickRef, zones, navigateToActiveRef } = useGame();
   const { character, resources, currentAction, isExploring } = state;
 
   const isActive = (tab: SidebarTab) => sidebarOpen && activeTab === tab;
@@ -33,7 +33,7 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
       <div className="top-spacer" />
 
       {activeZone && (
-        <div className="top-action-status">
+        <div className="top-action-status" onClick={() => navigateToActiveRef.current?.()}>
           <span className="top-action-dot">◉</span>
           <span className="top-action-label">{activeZone.actionType ?? '탐험'}</span>
           <span className="top-action-sep">·</span>

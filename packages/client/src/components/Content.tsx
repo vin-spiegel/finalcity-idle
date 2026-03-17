@@ -24,6 +24,7 @@ import { useGame } from "../context/GameContext";
 import { api } from "../lib/api";
 import type { ZoneRow } from "../lib/api";
 
+
 // ─── Types ────────────────────────────────────────────────────
 
 type DangerLevel = "안전" | "보통" | "위험" | "극한";
@@ -53,6 +54,64 @@ const DANGER_CLASS: Record<DangerLevel, string> = {
 };
 
 const HUD_LOG_COUNT = 4;
+
+// ─── NPC presence ─────────────────────────────────────────────
+
+const NPC_TITLES = ["방랑자", "순환회원", "잡역부", "채집꾼", "탐색자", "유랑자", "개척자", "폐허사냥꾼"];
+const NPC_NAMES  = ["카이", "시오", "펜", "카라", "렌", "미르", "토르", "유이", "하켄", "세라", "나린", "다온", "루카", "에이", "볼크", "이든"];
+
+const NPC_GENERIC_LINES = [
+  "이 구역은 처음이에요?",
+  "자원 채집 효율이 꽤 좋은 편이에요.",
+  "조심하세요. 가끔 이상한 마나 파동이 감지된대요.",
+  "순환회가 이 구역 출입을 제한하려 했는데, 그냥 무시하고 왔어요.",
+  "오늘은 피폭 수치가 평소보다 낮네요.",
+  "파편 줍는 데 30분 걸릴 때도 있는데, 가끔 희귀한 것도 나오니까요.",
+  "마나 결정 품질이 여기가 좋다고 소문이 나서 왔어요.",
+  "폐허 사냥꾼들이 자주 지나가는데, 눈 마주치지 않는 게 나아요.",
+  "여기선 혼자 다니지 않는 게 기본이에요.",
+  "이 구역 지형이 낯설어서 처음엔 많이 헤맸어요.",
+];
+
+const NPC_REASON: Record<string, string> = {
+  "방랑자":    "딱히 목적 없이 돌아다니다 보니까 여기까지 왔어요.",
+  "순환회원":  "조직에서 이 구역 자원 조사 임무를 줬어요.",
+  "채집꾼":    "이 근처 채집이 제 생계예요.",
+  "잡역부":    "부탁받은 일이 있어서요. 자세한 건 말 못 해요.",
+  "탐색자":    "이 구역 지도 데이터가 부족해서 직접 와봤어요.",
+  "유랑자":    "여기저기 다니다 보면 재밌는 게 나오더라고요.",
+  "개척자":    "언젠가 여기에 베이스캠프 만들 생각이에요.",
+  "폐허사냥꾼":"위험한 곳일수록 값진 게 있거든요.",
+};
+
+function lcg(seed: number) {
+  return ((seed * 1664525 + 1013904223) >>> 0) / 0x100000000;
+}
+
+function zoneNpcs(zoneId: string, count = 3): string[] {
+  let seed = 0;
+  for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
+  return Array.from({ length: count }, (_, i) => {
+    const a = lcg(seed ^ (i * 0xdeadbeef));
+    const b = lcg(seed ^ (i * 0xcafebabe));
+    const title = NPC_TITLES[Math.floor(a * NPC_TITLES.length)];
+    const name  = NPC_NAMES[Math.floor(b * NPC_NAMES.length)];
+    return `${title}_${name}`;
+  });
+}
+
+function npcDialog(npcName: string, zoneId: string, idx: number): string[] {
+  let seed = 0;
+  for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
+  seed ^= (idx + 1) * 0xf00dbabe;
+
+  const title  = npcName.split("_")[0];
+  const reason = NPC_REASON[title] ?? "딱히 이유는 없어요.";
+  const i1     = Math.floor(lcg(seed ^ 0x1111) * NPC_GENERIC_LINES.length);
+  let   i2     = Math.floor(lcg(seed ^ 0x2222) * NPC_GENERIC_LINES.length);
+  if (i2 === i1) i2 = (i2 + 1) % NPC_GENERIC_LINES.length;
+  return [reason, NPC_GENERIC_LINES[i1], NPC_GENERIC_LINES[i2]];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -97,15 +156,28 @@ function findLeaf(roots: ZoneNode[], id: string): ZoneNode | null {
   return node?.tickSec != null ? node : null;
 }
 
+function findPathTo(nodes: ZoneNode[], targetId: string, acc: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const next = [...acc, node.id];
+    if (node.id === targetId) return next;
+    const found = findPathTo(node.children, targetId, next);
+    if (found) return found;
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────
 
 export default function Content() {
-  const { state, dispatch, mapTickRef, zones: zoneRows } = useGame();
+  const { state, dispatch, mapTickRef, navigateToActiveRef, zones: zoneRows } = useGame();
   const { currentAction, progress, logs, skills } = state;
 
-  const [roots,    setRoots]    = useState<ZoneNode[]>([]);
-  const [starting, setStarting] = useState(false);
-  const [stopping, setStopping] = useState(false);
+  const [roots,     setRoots]     = useState<ZoneNode[]>([]);
+  const [starting,  setStarting]  = useState(false);
+  const [stopping,  setStopping]  = useState(false);
+  const [toast,     setToast]     = useState<string | null>(null);
+  const [npcModal,  setNpcModal]  = useState<{ name: string; lines: string[] } | null>(null);
+
 
   useEffect(() => {
     if (zoneRows.length > 0) setRoots(buildTree(zoneRows));
@@ -113,6 +185,35 @@ export default function Content() {
 
   // path = list of zone IDs navigated into (excludes "world" root)
   const [path, setPath] = useState<string[]>([]);
+
+  // 탐험 중인 구역으로 이동하는 함수 — Topbar에서 호출 가능하도록 ref 등록
+  useEffect(() => {
+    navigateToActiveRef.current = () => {
+      if (!state.isExploring || !currentAction.zoneId || roots.length === 0) return;
+      const topLevel = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
+      const autoPath = findPathTo(topLevel, currentAction.zoneId);
+      if (autoPath) setPath(autoPath);
+    };
+  });
+
+  // 로드 시 탐험 중인 구역으로 자동 이동 + 토스트
+  useEffect(() => {
+    if (roots.length === 0 || !state.isExploring || !currentAction.zoneId) return;
+    const topLevel = roots.find(n => n.id === "world")?.children ?? roots.filter(n => n.id !== "world");
+    const autoPath = findPathTo(topLevel, currentAction.zoneId);
+    if (autoPath) {
+      setPath(autoPath);
+      const zoneName = findNode(roots, currentAction.zoneId)?.name ?? currentAction.zoneId;
+      setToast(`◉ ${zoneName}에서 탐험 중`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roots]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const activeZone     = state.isExploring ? currentAction.zoneId : "";
   const activeLeaf     = findLeaf(roots, activeZone);
@@ -159,6 +260,7 @@ export default function Content() {
 
   return (
     <div className="content">
+      {toast && <div className="entry-toast">{toast}</div>}
       <div className="content-header">
         <div className="breadcrumb-row">
           {path.length > 0 && (
@@ -191,7 +293,27 @@ export default function Content() {
 
       <div className="content-body">
 
-        {/* ── 맵 미리보기 ── */}
+
+        {/* ── NPC 대화 / 맵 미리보기 ── */}
+        {npcModal ? (
+          <div className="npc-dialog-wrap">
+            <span className="modal-corner modal-corner--tl" />
+            <span className="modal-corner modal-corner--tr" />
+            <span className="modal-corner modal-corner--bl" />
+            <span className="modal-corner modal-corner--br" />
+            <div className="modal-header">
+              <div className="modal-image-wrap">
+                <img className="modal-image" src={avatar} alt={npcModal.name} />
+              </div>
+              <div className="modal-label">{npcModal.name}</div>
+              <div className="modal-sublabel">탐험자</div>
+            </div>
+            <div className="modal-divider"><span>대화</span></div>
+            <div className="modal-body">
+              {npcModal.lines.map((line, i) => <p key={i}>{line}</p>)}
+            </div>
+          </div>
+        ) : (
         <div className="map-preview-wrap" data-view={viewKey}>
           <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
           <div className="map-region-tint" />
@@ -212,14 +334,11 @@ export default function Content() {
                 const age = hudLogs.length - 1 - i;
                 return (
                   <div key={i} className="map-hud-line" style={{ opacity: 1 - age * 0.22 }}>
-                    <span className="log-time">{entry.time}</span>
-                    <span className="log-text">
-                      {entry.segments.map((seg, j) =>
-                        seg.type === "plain"
-                          ? <span key={j}>{seg.text}</span>
-                          : <span key={j} className={seg.type}>{seg.text}</span>
-                      )}
-                    </span>
+                    {entry.segments.map((seg, j) =>
+                      seg.type === "plain"
+                        ? <span key={j}>{seg.text}</span>
+                        : <span key={j} className={seg.type}>{seg.text}</span>
+                    )}
                   </div>
                 );
               })}
@@ -229,10 +348,18 @@ export default function Content() {
             </div>
           )}
         </div>
+        )}
 
-        {/* ── Zone 리스트 ── */}
+        {/* ── Zone 리스트 / NPC 대화 액션 ── */}
         <div className="nav-list">
-          {roots.length === 0 ? (
+          {npcModal ? (
+            <div className="nav-row" onClick={() => setNpcModal(null)}>
+              <div className="nav-row-info">
+                <div className="nav-row-name">자리를 뜬다</div>
+              </div>
+              <div className="nav-row-arrow">›</div>
+            </div>
+          ) : roots.length === 0 ? (
             <>
               {[0.9, 0.65, 0.75, 0.55].map((w, i) => (
                 <div key={i} className="nav-row nav-row--skeleton">
@@ -270,12 +397,11 @@ export default function Content() {
                     onClick={async () => {
                       if (isActive || starting || locked) return;
                       setStarting(true);
-                      // Optimistic: update UI immediately
                       dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
                       try {
                         await api.startExploration(leaf.id);
                       } catch {
-                        dispatch({ type: "STOP_EXPLORE" }); // rollback
+                        dispatch({ type: "STOP_EXPLORE" });
                       } finally {
                         setStarting(false);
                       }
@@ -290,40 +416,52 @@ export default function Content() {
                           : `▶ ${action} 시작`}
                       </div>
                       <div className="nav-row-badges">
-                        <span className="badge">◷ {leaf.tickSec}s</span>
-                        <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
-                        {isActive && <span className="badge badge--active">{action} 중</span>}
+                        {isActive
+                          ? <>
+                              <span className="badge">◷ {fmtElapsed(elapsed)}</span>
+                              <span className="badge">{progress.toFixed(1)}%</span>
+                            </>
+                          : <>
+                              <span className="badge">◷ {leaf.tickSec}s</span>
+                              <span className={`badge badge--danger ${DANGER_CLASS[leaf.dangerLevel]}`}>{leaf.dangerLevel}</span>
+                            </>
+                        }
                       </div>
                     </div>
-                    <div className="nav-row-arrow">{locked ? "🔒" : isActive ? "●" : "▶"}</div>
+                    {isActive ? (
+                      <button
+                        className={`nav-row-cancel${stopping ? " nav-row-cancel--pending" : ""}`}
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (stopping) return;
+                          setStopping(true);
+                          dispatch({ type: "STOP_EXPLORE" });
+                          try { await api.stopExploration(); }
+                          catch { /* ok */ }
+                          finally { setStopping(false); }
+                        }}
+                      >
+                        {stopping ? "◌" : "✕"}
+                      </button>
+                    ) : (
+                      <div className="nav-row-arrow">{locked ? "🔒" : "▶"}</div>
+                    )}
                   </div>
-                  {/* 탐색 취소 */}
-                  {isActive && (
+                  {/* NPC 목록 */}
+                  {zoneNpcs(leaf.id).map((npcName, i) => (
                     <div
-                      className={`nav-row nav-row--stop${stopping ? " nav-row--pending" : ""}`}
-                      onClick={async () => {
-                        if (stopping) return;
-                        setStopping(true);
-                        // Optimistic: update UI immediately
-                        dispatch({ type: "STOP_EXPLORE" });
-                        try {
-                          await api.stopExploration();
-                        } catch { /* server stop failed, but sync loop is now paused — ok */ }
-                        finally {
-                          setStopping(false);
-                        }
-                      }}
+                      key={i}
+                      className="nav-row nav-row--npc"
+                      onClick={() => setNpcModal({ name: npcName, lines: npcDialog(npcName, leaf.id, i) })}
                     >
+                      <img className="nav-row-avatar" src={avatar} alt={npcName} />
                       <div className="nav-row-info">
-                        <div className="nav-row-name">{stopping ? "◌ 취소 중…" : `✕ ${action} 취소`}</div>
-                        <div className="nav-row-badges">
-                          <span className="badge">◷ {fmtElapsed(elapsed)}</span>
-                          <span className="badge">{progress.toFixed(1)}%</span>
-                        </div>
+                        <div className="nav-row-name">{npcName}</div>
                       </div>
                       <div className="nav-row-arrow">›</div>
                     </div>
-                  )}
+                  ))}
                 </>
               );
             })()
@@ -356,6 +494,7 @@ export default function Content() {
         </div>
 
       </div>
+
     </div>
   );
 }

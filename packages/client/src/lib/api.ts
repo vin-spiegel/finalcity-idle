@@ -13,6 +13,12 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return json.data;
 }
 
+export type DropEntry = {
+  resourceType: string;
+  amount:       number;
+  chance:       number; // 0–1
+};
+
 export type ZoneRow = {
   id:          string;
   parentId:    string | null;
@@ -25,6 +31,7 @@ export type ZoneRow = {
   tickSec:     number | null;
   actionType:  string | null;
   jobType:     string | null;
+  dropTable:   DropEntry[] | null;
 };
 
 export type UserRow = { id: number; username: string };

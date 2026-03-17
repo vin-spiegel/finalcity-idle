@@ -132,11 +132,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 export const CIRCLE_CIRCUMFERENCE = 75.4; // 2π × r=12
 
 type GameContextValue = {
-  state:          GameState;
-  dispatch:       React.Dispatch<GameAction>;
-  circleTickRef:  RefObject<SVGCircleElement | null>;
-  mapTickRef:     RefObject<HTMLDivElement | null>;
-  zones:          ZoneRow[];
+  state:                 GameState;
+  dispatch:              React.Dispatch<GameAction>;
+  circleTickRef:         RefObject<SVGCircleElement | null>;
+  mapTickRef:            RefObject<HTMLDivElement | null>;
+  zones:                 ZoneRow[];
+  navigateToActiveRef:   React.MutableRefObject<(() => void) | null>;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -219,6 +220,14 @@ export const RESOURCE_METADATA: Record<string, ResourceMeta> = {
   crystal_core: { name: '결정 코어', grade: 'epic', desc: '순수한 에너지의 결정체.' },
 };
 
+const REGION_PALETTES: Record<string, { primary: string; glow: string }> = {
+  'urban-ruins':      { primary: '#00e5ff', glow: 'rgba(0, 229, 255, 0.10)' },
+  'mana-research':    { primary: '#cc44ff', glow: 'rgba(204, 68, 255,  0.10)' },
+  'outer-nature':     { primary: '#44ff44', glow: 'rgba(68, 255, 68,   0.10)' },
+  'underground-veins':{ primary: '#ffaa00', glow: 'rgba(255, 170, 0,   0.10)' },
+};
+const DEFAULT_PALETTE = { primary: '#b58900', glow: 'rgba(181, 137, 0, 0.10)' };
+
 function nowHHMM() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -266,8 +275,9 @@ export function GameProvider({ children, username, initialStatus, initialResourc
   const zonesRef = useRef(initialZones ?? []);
   useEffect(() => { zonesRef.current = initialZones ?? []; }, [initialZones]);
 
-  const circleTickRef = useRef<SVGCircleElement>(null);
-  const mapTickRef    = useRef<HTMLDivElement>(null);
+  const circleTickRef        = useRef<SVGCircleElement>(null);
+  const mapTickRef           = useRef<HTMLDivElement>(null);
+  const navigateToActiveRef  = useRef<(() => void) | null>(null);
 
   // Stable refs so RAF + async closures don't go stale
   const actionRef      = useRef(state.currentAction);
@@ -279,7 +289,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
   const dispatchStable = useCallback(dispatch, []);
 
   const providerValue = useMemo(
-    () => ({ state, dispatch, circleTickRef, mapTickRef, zones: initialZones ?? [] }),
+    () => ({ state, dispatch, circleTickRef, mapTickRef, navigateToActiveRef, zones: initialZones ?? [] }),
     [state, dispatch, initialZones],
   );
 
@@ -311,6 +321,15 @@ export function GameProvider({ children, username, initialStatus, initialResourc
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  // ── Region color theme ────────────────────────────────────
+  useEffect(() => {
+    const zone    = zonesRef.current.find(z => z.id === state.currentAction.zoneId);
+    const palette = REGION_PALETTES[zone?.parentId ?? ''] ?? DEFAULT_PALETTE;
+    const root    = document.documentElement;
+    root.style.setProperty('--region-primary', palette.primary);
+    root.style.setProperty('--region-glow',    palette.glow);
+  }, [state.currentAction.zoneId]);
+
   // ── Server sync loop ──────────────────────────────────────
   useEffect(() => {
     const sync = async () => {
@@ -323,7 +342,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
         if (result.jobType && result.jobPointsGained > 0) {
           const oldLevel = stateRef.current.skills[result.jobType] ?? 0;
           const newLevel = oldLevel + result.jobPointsGained / 100;
-
+          
           const milestones = [10, 15, 20, 30, 35];
           for (const m of milestones) {
             if (oldLevel < m && newLevel >= m) {
@@ -366,7 +385,7 @@ export function GameProvider({ children, username, initialStatus, initialResourc
           nextTickIn:      result.nextTickIn,
           tickSec:         result.tickSec,
         });
-
+        
         if (result.ticks > 0) {
           for (const [key, amt] of Object.entries(result.resources)) {
             if (amt <= 0) continue;
@@ -391,6 +410,9 @@ export function GameProvider({ children, username, initialStatus, initialResourc
         console.warn('[sync] error:', err);
       }
     };
+
+    // Initial sync
+    sync();
 
     const interval = setInterval(sync, 30_000);
 

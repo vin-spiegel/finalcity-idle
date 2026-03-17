@@ -53,6 +53,10 @@
   --green-dim:   #859900;
   --amber:       #ffff00;
   --amber-dim:   #b58900;
+
+  /* Region theme — overridden by JS on zone change */
+  --region-primary: #b58900;
+  --region-glow:    rgba(181, 137, 0, 0.12);
   --red:         #ff0000;
   --red-dim:     #dc322f;
   --magenta:     #ff00ff;
@@ -206,6 +210,7 @@ body {
 .top-action-status {
   display: flex;
   align-items: center;
+  cursor: pointer;
   gap: 5px;
   margin-left: 14px;
   font-size: 11px;
@@ -213,8 +218,8 @@ body {
   overflow: hidden;
   max-width: 220px;
 }
-.top-action-dot   { color: var(--amber-dim); font-size: 8px; flex-shrink: 0; }
-.top-action-label { color: var(--amber-dim); flex-shrink: 0; opacity: 0.8; }
+.top-action-dot   { color: var(--region-primary); font-size: 8px; flex-shrink: 0; }
+.top-action-label { color: var(--region-primary); flex-shrink: 0; opacity: 0.8; }
 .top-action-sep   { color: var(--border); flex-shrink: 0; }
 .top-action-zone  { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -344,6 +349,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .app-right {
@@ -525,9 +531,9 @@ body {
 
 .menu-active-dot {
   width: 7px; height: 7px;
-  background: var(--amber);
+  background: var(--region-primary);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--amber);
+  box-shadow: 0 0 6px var(--region-primary);
 }
 
 /* ═══ SKILL ITEMS ═══ */
@@ -634,7 +640,33 @@ body {
 
 /* ─── CONTENT ────────────────────────────────────────────── */
 
+.entry-toast {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--region-primary);
+  color: var(--region-primary);
+  font-size: 12px;
+  padding: 7px 16px;
+  letter-spacing: 0.5px;
+  z-index: 100;
+  pointer-events: none;
+  animation: toast-in-out 3.5s ease forwards;
+}
+@keyframes toast-in-out {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  10%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.entry-toast--log {
+  animation-duration: 2.2s;
+}
+
 .content {
+  position: relative;
   background: var(--bg);
   padding: 20px;
   display: flex;
@@ -649,6 +681,38 @@ body {
   flex-direction: column;
   gap: 16px;
   padding-bottom: 56px;
+  position: relative;
+}
+
+.log-toast-stack {
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.log-toast {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  border-left: 2px solid var(--border-color);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  animation: log-toast-slide 3.5s ease forwards;
+}
+
+@keyframes log-toast-slide {
+  0%   { opacity: 0; transform: translateX(-6px); }
+  8%   { opacity: 1; transform: translateX(0); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .map-preview-wrap {
@@ -763,7 +827,7 @@ body {
 }
 
 .map-hud-pct {
-  color: var(--amber-dim);
+  color: var(--region-primary);
   font-size: 13px;
   font-weight: 600;
   flex-shrink: 0;
@@ -799,8 +863,8 @@ body {
 .map-hud-tick-fill {
   height: 100%;
   width: 0%;
-  background: var(--amber-dim);
-  box-shadow: 0 0 4px rgba(181, 137, 0, 0.7);
+  background: var(--region-primary);
+  box-shadow: 0 0 4px var(--region-glow);
 }
 
 .map-hud-log {
@@ -831,6 +895,90 @@ body {
   line-height: 1.4;
   color: var(--log-text);
   transition: opacity 0.5s ease;
+}
+
+/* ── Explore card (탐험 중 상태 카드) ── */
+.explore-card {
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 12px 14px 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.explore-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.explore-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.explore-card-zone {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.explore-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.explore-card-action {
+  color: var(--region-primary);
+}
+
+.explore-card-dot {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.explore-card-elapsed {
+  color: var(--text-dim);
+}
+
+.explore-card-skill-lv {
+  color: var(--color-highlight);
+}
+
+.explore-card-pct {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--region-primary);
+  white-space: nowrap;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.explore-card-bar {
+  height: 2px;
+  background: var(--border-dim);
+  margin: 0 -14px;
+}
+
+.explore-card-bar-fill {
+  height: 100%;
+  background: var(--region-primary);
+  width: 0%;
+}
+
+.explore-card-log {
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .content-header {
@@ -1021,7 +1169,7 @@ body {
 }
 
 .zone-detail-pct {
-  color: var(--amber-dim);
+  color: var(--region-primary);
   font-size: 11px;
 }
 
@@ -1060,9 +1208,9 @@ body {
 .nav-row:hover { background: rgba(255,255,255,0.03); }
 
 .nav-row--active {
-  border-left: 2px solid var(--amber-dim);
+  border-left: 2px solid var(--region-primary);
   padding-left: 14px;
-  background: rgba(181,137,0,0.04);
+  background: var(--region-glow);
 }
 
 .nav-row--pending {
@@ -1100,6 +1248,29 @@ body {
   color: var(--amber);
   font-size: 10px;
   margin-left: auto;
+}
+
+/* ── NPC rows ── */
+.nav-row--npc {
+  cursor: pointer;
+}
+
+.nav-row-avatar {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* ── NPC 인라인 대화 패널 (Modal 스타일, 맵 영역 교체) ── */
+.npc-dialog-wrap {
+  position: relative;
+  height: 280px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-deep, #050f10);
 }
 
 .nav-row-art {
@@ -1145,9 +1316,27 @@ body {
   padding-left: 4px;
 }
 
+.nav-row-cancel {
+  background: none;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  font-size: 12px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.nav-row-cancel:hover { opacity: 1; }
+.nav-row-cancel--pending { opacity: 0.4; cursor: default; }
+
 .badge--active {
-  color: var(--amber-dim);
-  border-color: var(--amber-dim);
+  color: var(--region-primary);
+  border-color: var(--region-primary);
 }
 
 /* ── Action Panel (Depth 3) ─────────────────────────────────── */
