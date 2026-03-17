@@ -9,6 +9,10 @@ import zoneVoid   from "../assets/zones/void.png";
 const ZONE_IMAGES: Record<string, string> = {
   // world & branches
   world:            zoneWorld,
+  "urban-ruins":    zoneKirtas,
+  "mana-research":  zoneVoid,
+  "outer-nature":   zoneKirtas,
+  "underground-veins": zoneVoid,
   kirtas:           zoneKirtas,
   "red-canyon":     zoneKirtas,
   "gray-plateau":   zoneVoid,
@@ -19,6 +23,13 @@ const ZONE_IMAGES: Record<string, string> = {
   "camp3-mana-rift":   zoneKirtas,
   "camp3-ancient-lab": zoneVoid,
   "camp3-void-depths": zoneVoid,
+  // Phase B leaves
+  "lumber-dead-forest": zoneKirtas,
+  "lumber-mutant-plants": zoneKirtas,
+  "lumber-forbidden-deep": zoneVoid,
+  "miner-quarry": zoneVoid,
+  "miner-mana-vein": zoneVoid,
+  "miner-crystal-cave": zoneVoid,
 };
 import { useGame } from "../context/GameContext";
 import { api } from "../lib/api";
@@ -57,6 +68,15 @@ const HUD_LOG_COUNT = 4;
 
 // ─── NPC presence ─────────────────────────────────────────────
 
+type NpcModalState = {
+  name: string;
+  lines: string[];
+  count: number;
+  isEnding?: boolean;
+  coolProgress?: number;
+  isPostCooldown?: boolean; // 쿨타임 직후인지 여부
+};
+
 const NPC_TITLES = ["방랑자", "순환회원", "잡역부", "채집꾼", "탐색자", "유랑자", "개척자", "폐허사냥꾼"];
 const NPC_NAMES  = ["카이", "시오", "펜", "카라", "렌", "미르", "토르", "유이", "하켄", "세라", "나린", "다온", "루카", "에이", "볼크", "이든"];
 
@@ -84,6 +104,24 @@ const NPC_REASON: Record<string, string> = {
   "폐허사냥꾼":"위험한 곳일수록 값진 게 있거든요.",
 };
 
+// ─── NPC 대사 리스트 (여기에 주실 리스트를 추가하면 됩니다) ───
+const MIR_TALK_LIST = [
+  "순환회에서 감투를 쓴 그새끼. 왜이렇게 꺼드럭대는지 모르겠네요.",
+  "요즘 공장에 이상한 소문이 돌아요. 밤마다 기계들이 스스로 움직인다나.",
+  "이 구역 잔해들 사이에서 가끔 옛날 물건들이 나오는데, 꽤 쏠쏠해요.",
+  "언젠가는 이 짓도 그만두고 파이널 시티 안쪽으로 들어가고 싶네요.",
+  "그래도, 할 일이 있어서 다행이네요.",
+  "순환회에 그녀석이 들어갔다던데. 잘 지내려나. 누구냐고요? 제 옛 연인이요.",
+  "그래도 포기 하지 않아.나는. 아, 들으셨어요 ?",
+  "오래전 가끔은 마나 폭풍 소리가 자장가처럼 들릴 때가 있어요. 미친 소리 같지만요.",
+  "저, 경보기가 울리는데, 꺼주실래요 ? 시끄러워서.",
+  // ... 추가될 대사들은 여기에 계속 넣으면 됩니다.
+];
+
+const NPC_SPECIAL_LINES: Record<string, string[]> = {
+  "잡역부_미르": MIR_TALK_LIST,
+};
+
 function lcg(seed: number) {
   return ((seed * 1664525 + 1013904223) >>> 0) / 0x100000000;
 }
@@ -100,17 +138,48 @@ function zoneNpcs(zoneId: string, count = 3): string[] {
   });
 }
 
-function npcDialog(npcName: string, zoneId: string, idx: number): string[] {
+function npcDialog(npcName: string, zoneId: string, idx: number, talkCount: number = 0, excludeLine?: string, isPostCooldown?: boolean): { lines: string[], isEnding: boolean } {
   let seed = 0;
   for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
   seed ^= (idx + 1) * 0xf00dbabe;
 
   const title  = npcName.split("_")[0];
   const reason = NPC_REASON[title] ?? "딱히 이유는 없어요.";
+
+  // 특수 대사가 있는 NPC인 경우
+  if (NPC_SPECIAL_LINES[npcName]) {
+    // 쿨타임 직후에는 지정된 대사 고정
+    if (isPostCooldown) {
+      return { lines: ["...", "하, 이런 곳에서도 수다를 좋아하는 분이 있네."], isEnding: false };
+    }
+
+    const specials = [...NPC_SPECIAL_LINES[npcName]];
+    
+    if (npcName === "잡역부_미르" && talkCount >= 5) {
+      specials.push("저기, 그렇게 한가해요?");
+    }
+
+    const isRandom = idx !== Math.floor(idx);
+    let i1 = isRandom
+      ? Math.floor(Math.random() * specials.length)
+      : Math.floor(lcg(seed ^ 0x1111) * specials.length);
+
+    if (specials.length > 1 && specials[i1] === excludeLine) {
+      i1 = (i1 + 1) % specials.length;
+    }
+
+    const chosenLine = specials[i1];
+    const isEnding = chosenLine === "저기, 그렇게 한가해요?";
+    
+    const displayReason = talkCount === 1 ? reason : "...";
+
+    return { lines: [displayReason, chosenLine], isEnding };
+  }
+
   const i1     = Math.floor(lcg(seed ^ 0x1111) * NPC_GENERIC_LINES.length);
   let   i2     = Math.floor(lcg(seed ^ 0x2222) * NPC_GENERIC_LINES.length);
   if (i2 === i1) i2 = (i2 + 1) % NPC_GENERIC_LINES.length;
-  return [reason, NPC_GENERIC_LINES[i1], NPC_GENERIC_LINES[i2]];
+  return { lines: [reason, NPC_GENERIC_LINES[i1], NPC_GENERIC_LINES[i2]], isEnding: false };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -176,7 +245,34 @@ export default function Content() {
   const [starting,  setStarting]  = useState(false);
   const [stopping,  setStopping]  = useState(false);
   const [toast,     setToast]     = useState<string | null>(null);
-  const [npcModal,  setNpcModal]  = useState<{ name: string; lines: string[] } | null>(null);
+  const [npcModal, setNpcModal] = useState<NpcModalState | null>(null);
+
+  // NPC 대화 쿨타임 타이머
+  useEffect(() => {
+    if (!npcModal?.isEnding) return;
+
+    const duration = 5000; // 5초 쿨타임
+    const interval = 50;   // 0.05초마다 갱신
+    const step = (interval / duration) * 100;
+
+    const timer = setInterval(() => {
+      setNpcModal(current => {
+        if (!current || !current.isEnding) {
+          clearInterval(timer);
+          return current;
+        }
+        const nextProgress = (current.coolProgress || 0) + step;
+        if (nextProgress >= 100) {
+          clearInterval(timer);
+          return { ...current, isEnding: false, coolProgress: 0, count: 1, isPostCooldown: true };
+        }
+        return { ...current, coolProgress: nextProgress };
+      });
+    }, interval);
+
+    return () => clearInterval(timer);
+  }, [npcModal?.isEnding]);
+
 
 
   useEffect(() => {
@@ -353,12 +449,67 @@ export default function Content() {
         {/* ── Zone 리스트 / NPC 대화 액션 ── */}
         <div className="nav-list">
           {npcModal ? (
-            <div className="nav-row" onClick={() => setNpcModal(null)}>
-              <div className="nav-row-info">
-                <div className="nav-row-name">자리를 뜬다</div>
+            <>
+              {npcModal.isEnding && (
+                <div style={{ 
+                  height: '2px', // 더 얇게
+                  background: 'rgba(0,0,0,0.3)', 
+                  width: '100%', 
+                  marginBottom: '-1px',
+                  position: 'relative',
+                  zIndex: 10
+                }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: 'var(--region-primary)', // 주황색으로 변경
+                    width: `${npcModal.coolProgress || 0}%`,
+                    transition: 'width 0.05s linear',
+                    boxShadow: '0 0 4px var(--region-glow)' // 주황색 글로우
+                  }} />
+                </div>
+              )}
+              <div 
+                className={`nav-row ${npcModal.isEnding ? "nav-row--disabled" : ""}`}
+                style={npcModal.isEnding ? { 
+                  backgroundColor: "rgba(220, 50, 47, 0.2)", 
+                  color: "var(--red-dim)",
+                  opacity: 0.9, 
+                  cursor: "not-allowed" 
+                } : {}}
+                onClick={() => {
+                  if (npcModal.isEnding) return;
+                  setNpcModal(current => {
+                    if (!current) return null;
+                    const nextCount = current.count + 1;
+                    // current.lines[1]은 실제 대사 줄이므로 이를 excludeLine으로 전달
+                    const { lines, isEnding } = npcDialog(current.name, currentNode?.id || 'world', Math.random(), nextCount, current.lines[1]);
+                    return { 
+                      ...current, 
+                      count: nextCount,
+                      lines,
+                      isEnding,
+                      isPostCooldown: false // 대화를 이어가면 플래그 해제
+                    };
+                  });
+                }}
+              >
+                <div className="nav-row-info">
+                  <div className="nav-row-name" style={npcModal.isEnding ? { color: "var(--red-dim)" } : {}}>
+                    {npcModal.isEnding ? "더 이상 대화할 수 없다" : "대화를 이어간다"}
+                  </div>
+                </div>
+                <div className="nav-row-arrow" style={npcModal.isEnding ? { color: "var(--red-dim)" } : {}}>
+                  {npcModal.isEnding ? "✕" : "›"}
+                </div>
               </div>
-              <div className="nav-row-arrow">›</div>
-            </div>
+
+              <div className="nav-row" onClick={() => setNpcModal(null)}>
+                <div className="nav-row-info">
+                  <div className="nav-row-name">자리를 뜬다</div>
+                </div>
+                <div className="nav-row-arrow">›</div>
+              </div>
+            </>
           ) : roots.length === 0 ? (
             <>
               {[0.9, 0.65, 0.75, 0.55].map((w, i) => (
@@ -453,7 +604,16 @@ export default function Content() {
                     <div
                       key={i}
                       className="nav-row nav-row--npc"
-                      onClick={() => setNpcModal({ name: npcName, lines: npcDialog(npcName, leaf.id, i) })}
+                      onClick={() => {
+                        const { lines, isEnding } = npcDialog(npcName, leaf.id, i, 1);
+                        setNpcModal({ 
+                          name: npcName, 
+                          lines,
+                          count: 1,
+                          isEnding,
+                          isPostCooldown: false
+                        });
+                      }}
                     >
                       <img className="nav-row-avatar" src={avatar} alt={npcName} />
                       <div className="nav-row-info">
@@ -471,22 +631,29 @@ export default function Content() {
               const isLeaf   = node.tickSec != null;
               const isActive = node.id === activeZone;
               const action   = node.actionType ?? null;
+              const skillLevel = node.jobType ? (skills[node.jobType] ?? 0) : 0;
+              const locked     = node.levelReq > 0 && skillLevel < node.levelReq;
+              
               return (
                 <div
                   key={node.id}
-                  className={`nav-row${isActive ? " nav-row--active" : ""}`}
+                  className={`nav-row${isActive ? " nav-row--active" : ""}${locked ? " nav-row--locked" : ""}`}
                   onClick={() => navigate(node.id)}
                 >
                   <div className="nav-row-info">
-                    <div className="nav-row-name">{node.name}</div>
+                    <div className="nav-row-name">
+                      {locked && <span style={{ marginRight: 6 }}>🔒</span>}
+                      {node.name}
+                    </div>
                     <div className="nav-row-badges">
+                      {locked && <span className="badge badge--danger">Lv.{node.levelReq} 필요</span>}
                       {isLeaf && action && <span className="badge">{action}</span>}
                       {isLeaf && <span className="badge">◷ {node.tickSec}s</span>}
                       <span className={`badge badge--danger ${DANGER_CLASS[node.dangerLevel]}`}>{node.dangerLevel}</span>
                       {isActive && <span className="badge badge--active">{action ?? "탐색"} 중</span>}
                     </div>
                   </div>
-                  <div className="nav-row-arrow">{isLeaf ? "▸" : "›"}</div>
+                  <div className="nav-row-arrow">{locked ? "🔒" : isLeaf ? "▸" : "›"}</div>
                 </div>
               );
             })

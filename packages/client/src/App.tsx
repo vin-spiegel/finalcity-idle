@@ -123,9 +123,21 @@ function AppSkeleton() {
 function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+    try {
+      await authClient.signIn.social({ provider: 'google', callbackURL: '/' });
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  const handleGuestLogin = () => {
+    setLoading(true);
+    // In dev mode, reloading will trigger api.init() again.
+    // The server's requireAuth bypass will then pick up the first user in the DB.
+    window.location.reload();
   };
 
   return (
@@ -133,9 +145,19 @@ function LoginScreen() {
       <div className="login-box">
         <div className="login-title">FINAL CITY</div>
         <div className="login-subtitle">파이널 시티</div>
-        <button className="login-btn" onClick={handleLogin} disabled={loading}>
-          {loading ? '연결 중…' : 'Google로 로그인'}
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button className="login-btn" onClick={handleGoogleLogin} disabled={loading}>
+            {loading ? '연결 중…' : 'Google로 로그인'}
+          </button>
+          <button 
+            className="login-btn" 
+            onClick={handleGuestLogin} 
+            style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}
+            disabled={loading}
+          >
+            게스트로 시작 (개발용)
+          </button>
+        </div>
       </div>
       <CRTOverlay />
     </div>

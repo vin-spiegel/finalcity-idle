@@ -63,8 +63,10 @@ export const authVerification = pgTable("verification", {
 
 export type DropEntry = {
   resourceType: string;
-  amount: number;
-  chance: number; // 0–1
+  chance:       number;  // 0–1
+  minQty:       number;
+  maxQty:       number;
+  onComplete?:  boolean; // if true, only drops when exploration progress reaches 100
 };
 
 // Recursive zone tree: branches have children, leaves have tickSec/dropTable

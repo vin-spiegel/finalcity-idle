@@ -34,13 +34,19 @@ export function calcTicks(params: {
   const progressGain = newProgress - currentProgress;
   const isFarming = rawProgress >= 100;
 
-  // Resource accumulation — use seeded RNG for reproducibility would be ideal,
-  // but for local dev we just use Math.random() per tick
+  // Resource accumulation
   const resources: Record<string, number> = {};
   for (let i = 0; i < ticks; i++) {
+    const tickProgress = currentProgress + i + 1;
+    const isCompletionTick = tickProgress === 100;
+
     for (const entry of dropTable) {
+      // onComplete drops only happen once when progress hits exactly 100
+      if (entry.onComplete && !isCompletionTick) continue;
+
       if (Math.random() < entry.chance) {
-        resources[entry.resourceType] = (resources[entry.resourceType] ?? 0) + entry.amount;
+        const qty = Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty;
+        resources[entry.resourceType] = (resources[entry.resourceType] ?? 0) + qty;
       }
     }
   }
