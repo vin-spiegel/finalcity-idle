@@ -1,20 +1,39 @@
-import { useState } from 'react';
-import { useGame } from '../context/GameContext';
+import { useState, useMemo } from 'react';
+import { useGame, RESOURCE_METADATA, type Item } from '../context/GameContext';
 
 export default function InventoryView() {
   const { state } = useGame();
   const { inventory, resources } = state;
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
-  const selected = inventory.find(i => i.id === selectedItem);
+  const mergedInventory = useMemo(() => {
+    const items: Item[] = [...inventory];
+    
+    Object.entries(resources).forEach(([key, qty]) => {
+      if (qty <= 0) return;
+      const meta = RESOURCE_METADATA[key];
+      items.push({
+        id: key,
+        name: meta?.name ?? key,
+        type: 'material',
+        qty,
+        grade: meta?.grade ?? 'common',
+        desc: meta?.desc ?? '',
+      });
+    });
+    
+    return items;
+  }, [inventory, resources]);
+
+  const selected = mergedInventory.find(i => i.id === selectedItem);
 
   return (
     <div className="content">
       <div className="content-header">
         <h2 style={{ fontSize: 16, fontWeight: 'bold' }}>인벤토리</h2>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
-          <span className="top-res">◆ {resources.manaStone}</span>
-          <span className="top-res">💎 {resources.bss.toLocaleString()}</span>
+          <span className="top-res">◆ {Math.floor(resources.mana_crystal || 0)}</span>
+          <span className="top-res">💎 {(resources.bss || 0).toLocaleString()}</span>
         </div>
       </div>
 
@@ -26,9 +45,11 @@ export default function InventoryView() {
           padding: 16,
           backgroundColor: 'rgba(0,0,0,0.3)',
           border: '1px solid var(--border-color)',
-          minHeight: 240
+          minHeight: 240,
+          maxHeight: 400,
+          overflowY: 'auto'
         }}>
-          {inventory.map(item => (
+          {mergedInventory.map(item => (
             <div
               key={item.id}
               onClick={() => setSelectedItem(item.id)}
@@ -45,22 +66,23 @@ export default function InventoryView() {
               }}
             >
               <div style={{ fontSize: 20 }}>
-                {item.type === 'material' ? '📦' : item.type === 'consumable' ? '🧪' : '🗡'}
+                {item.id === 'bss' ? '💎' : item.type === 'material' ? '📦' : item.type === 'consumable' ? '🧪' : '🗡'}
               </div>
-              {item.qty > 1 && (
+              {item.qty >= 1 && (
                 <span style={{ 
                   position: 'absolute', 
                   bottom: 2, 
                   right: 4, 
                   fontSize: 10,
-                  color: 'var(--text-dim)' 
+                  color: item.grade === 'epic' ? '#ffd700' : 'var(--text-dim)',
+                  fontWeight: item.grade === 'epic' ? 'bold' : 'normal'
                 }}>
-                  {item.qty}
+                  {item.qty < 1 ? item.qty.toFixed(1) : Math.floor(item.qty)}
                 </span>
               )}
             </div>
           ))}
-          {Array.from({ length: Math.max(0, 30 - inventory.length) }).map((_, i) => (
+          {Array.from({ length: Math.max(0, 30 - mergedInventory.length) }).map((_, i) => (
             <div key={`empty-${i}`} style={{
               width: 48,
               height: 48,
@@ -80,11 +102,17 @@ export default function InventoryView() {
             gap: 8
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: 16, color: 'var(--color-highlight)' }}>{selected.name}</h3>
-              <span className={`badge`} style={{ fontSize: 10 }}>{selected.grade.toUpperCase()}</span>
+              <h3 style={{ fontSize: 16, color: selected.grade === 'epic' ? '#ffd700' : 'var(--color-highlight)' }}>{selected.name}</h3>
+              <span className={`badge`} style={{ 
+                fontSize: 10, 
+                backgroundColor: selected.grade === 'epic' ? '#ffd700' : undefined,
+                color: selected.grade === 'epic' ? '#000' : undefined
+              }}>
+                {selected.grade.toUpperCase()}
+              </span>
             </div>
             <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
-              수량: {selected.qty}
+              수량: {selected.qty < 1 ? selected.qty.toFixed(2) : Math.floor(selected.qty)}
             </div>
             <p style={{ fontSize: 13, lineHeight: 1.4, marginTop: 8 }}>
               {selected.desc}
