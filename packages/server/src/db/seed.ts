@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "./index.js";
-import { zones } from "./schema.js";
+import { zones, users, userJobs, userResources } from "./schema.js";
 
 // ─── Zone tree ────────────────────────────────────────────────────────────────
 // Branch nodes: parentId set, tickSec/actionType/jobType/dropTable = null
@@ -186,7 +186,6 @@ const ZONE_DATA = [
 ] as const;
 
 export async function seedZones() {
-  // Clear existing zones to avoid hierarchy conflicts if needed, or just upsert
   await db
     .insert(zones)
     .values(ZONE_DATA.map(z => ({
@@ -216,7 +215,32 @@ export async function seedZones() {
   console.log(`✅ Seeded ${ZONE_DATA.length} zones`);
 }
 
+export async function seedUser() {
+  const [devUser] = await db.insert(users).values({
+    username: "방랑자_카이",
+  }).onConflictDoNothing().returning();
+
+  const userId = devUser?.id ?? 1;
+
+  // Add initial job points
+  await db.insert(userJobs).values([
+    { userId, jobType: "searcher", jobPoints: 500, isActive: true },
+    { userId, jobType: "technician", jobPoints: 0, isActive: false },
+    { userId, jobType: "scholar", jobPoints: 0, isActive: false },
+    { userId, jobType: "lumberjack", jobPoints: 0, isActive: false },
+    { userId, jobType: "miner", jobPoints: 0, isActive: false },
+  ]).onConflictDoNothing();
+
+  // Add some initial resources
+  await db.insert(userResources).values([
+    { userId, resourceType: "mana_crystal", amount: 10 },
+    { userId, resourceType: "scrap_parts", amount: 5 },
+  ]).onConflictDoNothing();
+
+  console.log(`✅ Seeded default user (userId=${userId})`);
+}
+
 // run directly: tsx src/db/seed.ts
 if (process.argv[1]?.endsWith("seed.ts") || process.argv[1]?.endsWith("seed.js")) {
-  seedZones().then(() => process.exit(0));
+  Promise.all([seedZones(), seedUser()]).then(() => process.exit(0));
 }

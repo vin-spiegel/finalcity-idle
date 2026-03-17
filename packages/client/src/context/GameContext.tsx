@@ -41,6 +41,7 @@ export type GameState = {
   character:     { name: string; hp: number; maxHp: number; exp: number; maxExp: number };
   resources:     Record<string, number>;
   skills:        Record<string, number>; // jobType → skill level (0.00–100.00)
+  activeJob:     string | null;
   currentAction: CurrentAction;
   progress:      number;      // zone exploration % (0–100)
   isExploring:   boolean;
@@ -53,6 +54,7 @@ const INITIAL_STATE: GameState = {
   character:     { name: '방랑자_카이', hp: 450, maxHp: 500, exp: 12500, maxExp: 34000 },
   resources:     {},
   skills:        {},
+  activeJob:     'searcher',
   currentAction: {
     zoneId:      'camp3-commercial',
     createdAt:   Date.now(),
@@ -79,6 +81,7 @@ export type GameAction =
   | { type: 'ADD_LOG';       entry: LogEntry }
   | { type: 'SERVER_SYNC';   progress: number; resources: Record<string, number>; jobType: string | null; jobPointsGained: number; nextTickIn: number; tickSec: number }
   | { type: 'SET_RESOURCES'; resources: Record<string, number> }
+  | { type: 'SWITCH_JOB';    jobType: string }
   | { type: 'STOP_EXPLORE' };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -120,6 +123,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
     case 'SET_RESOURCES':
       return { ...state, resources: action.resources };
+    case 'SWITCH_JOB':
+      return { ...state, activeJob: action.jobType };
     case 'STOP_EXPLORE':
       return { ...state, isExploring: false };
     default:

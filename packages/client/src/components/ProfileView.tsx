@@ -24,8 +24,8 @@ const SKILL_MILESTONES: Record<string, { level: number; label: string }[]> = {
 };
 
 export default function ProfileView() {
-  const { state, zones } = useGame();
-  const { character, equipment, skills } = state;
+  const { state, zones, dispatch } = useGame();
+  const { character, equipment, skills, activeJob } = state;
 
   // jobType → display label from zone data (fallback for names not in SKILL_NAMES)
   const jobLabels = useMemo(() => {
@@ -83,16 +83,47 @@ export default function ProfileView() {
               const milestoneLevel = nextMilestone ? nextMilestone.level : (Math.floor(level / 10) + 1) * 10;
               const progressPct = Math.min((level / milestoneLevel) * 100, 100);
               const isLocked = level === 0;
+              const isActive = activeJob === id;
               const displayName = name || jobLabels[id] || id;
 
               return (
-                <div key={id} style={{ opacity: isLocked ? 0.45 : 1 }}>
+                <div 
+                  key={id} 
+                  style={{ 
+                    opacity: isLocked ? 0.45 : 1,
+                    padding: '8px',
+                    border: isActive ? '1px solid var(--color-primary)' : '1px solid transparent',
+                    background: isActive ? 'rgba(var(--color-primary-rgb), 0.05)' : 'transparent',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                    <span>{displayName}</span>
-                    <span style={{ color: 'var(--color-highlight)' }}>Lv.{level.toFixed(2)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{displayName}</span>
+                      {isActive && <span className="badge" style={{ fontSize: 9, backgroundColor: 'var(--color-primary)', color: '#000' }}>ACTIVE</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: 'var(--color-highlight)' }}>Lv.{level.toFixed(2)}</span>
+                      {!isActive && (
+                        <button 
+                          onClick={() => dispatch({ type: 'SWITCH_JOB', jobType: id })}
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 6px',
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid var(--border-color)',
+                            color: 'var(--text-main)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          전환
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="progress-bar" style={{ height: 6, marginBottom: 4 }}>
-                    <div className="progress-fill" style={{ width: `${progressPct}%`, backgroundColor: 'var(--cyan-dim)' }} />
+                    <div className="progress-fill" style={{ width: `${progressPct}%`, backgroundColor: isActive ? 'var(--color-primary)' : 'var(--cyan-dim)' }} />
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'right' }}>
                     {nextMilestone ? `${nextMilestone.label}까지 Lv.${(nextMilestone.level - level).toFixed(2)} 남음` : '최대 숙련'}

@@ -20,6 +20,16 @@ function extractSessionToken(cookieHeader: string): string | null {
 export async function requireAuth(c: Context<AppEnv>, next: Next) {
   const token = extractSessionToken(c.req.raw.headers.get("cookie") ?? "");
 
+  // ── Development Bypass ─────────────────────────────────────
+  // If we're in development and have no session, try to find or create a dev user.
+  if (process.env.NODE_ENV === "development" && !token) {
+    const [devUser] = await db.select().from(users).limit(1);
+    if (devUser) {
+      c.set("userId", devUser.id);
+      return next();
+    }
+  }
+
   // ── Cache hit: skip all DB queries ──────────────────────
   if (token) {
     const cached = sessionCache.get(token);
