@@ -5,7 +5,7 @@ export type LogSegment =
   | { type: "danger";    text: string }
   | { type: "good";      text: string };
 
-export type LogEntry = { segments: LogSegment[] };
+export type LogEntry = { segments: LogSegment[]; time?: string };
 
 export const INITIAL_LOGS: LogEntry[] = [
   { segments: [{ type: "highlight", text: "마나 결정(중급)" }, { type: "plain", text: " ×2 획득 — " }, { type: "reward", text: "+120 BSS 상당" }] },
