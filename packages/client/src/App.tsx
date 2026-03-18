@@ -198,6 +198,7 @@ function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab,   setActiveTab]   = useState<SidebarTab>('chat');
   const [tabbarTab,   setTabbarTab]   = useState<TabbarTab>('map');
+  const [partySlot1,  setPartySlot1]  = useState<string | null>(null);
 
   const savedRightW = useRef(SIDEBAR_RIGHT_DEFAULT);
 
@@ -264,6 +265,8 @@ function AppLayout() {
             sidebarOpen={sidebarOpen}
             activeTab={activeTab}
             onTabClick={handleTabClick}
+            partySlot1={partySlot1}
+            onNavigateToActive={() => setTabbarTab('map')}
           />
           <div className="main">
             {logToast && (
@@ -275,7 +278,7 @@ function AppLayout() {
                 )}
               </div>
             )}
-            {tabbarTab === 'map' && <Content />}
+            {tabbarTab === 'map' && <Content partySlot1={partySlot1} setPartySlot1={setPartySlot1} />}
             {tabbarTab === 'inventory' && <InventoryView />}
             {tabbarTab === 'profile' && <ProfileView />}
           </div>

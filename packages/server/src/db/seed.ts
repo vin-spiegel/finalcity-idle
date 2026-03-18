@@ -1,6 +1,6 @@
-import { sql } from "drizzle-orm";
+import { sql, notInArray, isNotNull, and } from "drizzle-orm";
 import { db } from "./index.js";
-import { zones, users, userJobs, userResources } from "./schema.js";
+import { zones, users, userJobs, userResources, userExploration } from "./schema.js";
 
 // ─── Zone tree ────────────────────────────────────────────────────────────────
 // Branch nodes: parentId set, tickSec/actionType/jobType/dropTable = null
@@ -15,67 +15,75 @@ const ZONE_DATA = [
     tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
-  // ── Branch: 도심 폐허 지대 (기존 키르타스 평원 등 통합) ─────────────────────
+  // ── Branch: 베이스캠프 ────────────────────────────────────────────────────
   {
-    id: "urban-ruins", parentId: "world",
-    name: "도심 폐허 지대", levelReq: 0, dangerLevel: "보통",
-    desc: "도시 붕괴 이후 폐허가 된 상업 및 제조 구역. 고철과 기본적인 마나 결정을 얻을 수 있다.",
+    id: "basecamp", parentId: "world",
+    name: "베이스캠프", levelReq: 0, sortOrder: 0, dangerLevel: "안전",
+    desc: "탐색대들이 모여드는 유일한 안전 구역. 순환회의 감시 아래 운영된다.",
     art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
-  // ── Branch: 마나 연구 구역 (기존 붉은 협곡/회색 고원 등 통합) ───────────────
+  // ── Branch: 키르타스 평원 ──────────────────────────────────────────────────
   {
-    id: "mana-research", parentId: "world",
-    name: "마나 연구 구역", levelReq: 0, dangerLevel: "위험",
-    desc: "고대 연구소와 마나 균열이 집중된 지역. 고대 기술과 순도 높은 마나 자원이 발견된다.",
+    id: "kirtas", parentId: "world",
+    name: "키르타스 평원", levelReq: 0, sortOrder: 1, dangerLevel: "보통",
+    desc: "도시 붕괴 이후 폐허가 된 개척지. 낮은 위험도에도 마나 결정 채굴 가치가 높아 탐색대가 끊이지 않는다.",
     art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
-  // ── Branch: 외곽 자연 구역 (Phase B) ──────────────────────────────────────
+  // ── Branch: 붉은 협곡 ─────────────────────────────────────────────────────
   {
-    id: "outer-nature", parentId: "world",
-    name: "외곽 자연 구역", levelReq: 0, dangerLevel: "보통",
-    desc: "도시 외곽의 거대 식물군락. 변이된 목재와 희귀한 포자를 채집할 수 있다.",
+    id: "red-canyon", parentId: "world",
+    name: "붉은 협곡", levelReq: 0, sortOrder: 2, dangerLevel: "위험",
+    desc: "산화된 마나 층이 지층을 물들인 협곡. 균열 밀도가 높아 공간 왜곡이 빈번하게 발생한다.",
     art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
-  // ── Branch: 지하 광맥 구역 (Phase B) ──────────────────────────────────────
+  // ── Branch: 회색 고원 ─────────────────────────────────────────────────────
   {
-    id: "underground-veins", parentId: "world",
-    name: "지하 광맥 구역", levelReq: 0, dangerLevel: "위험",
-    desc: "도시 깊숙한 곳의 광산과 동굴. 희귀 광물과 강력한 마나 결정을 채굴한다.",
+    id: "gray-plateau", parentId: "world",
+    name: "회색 고원", levelReq: 0, sortOrder: 3, dangerLevel: "위험",
+    desc: "고대 문명 유적이 점재하는 불모지. 탐색 대원들의 실종률이 지역 평균의 세 배에 달한다.",
     art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
-  // ── Leaves: 도심 폐허 지대 ────────────────────────────────────────────────
+  // ── Branch: 파이널 시티 외곽 ──────────────────────────────────────────────
   {
-    id: "camp3-commercial", parentId: "urban-ruins",
+    id: "final-city-outer", parentId: "world",
+    name: "파이널 시티 외곽", levelReq: 0, sortOrder: 4, dangerLevel: "극한",
+    desc: "도시 핵심부를 감싼 공허의 경계선. 이 선을 넘어 귀환한 탐색자의 기록은 없다.",
+    art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
+  },
+
+  // ── Leaves: 키르타스 평원 ─────────────────────────────────────────────────
+  {
+    id: "camp3-commercial", parentId: "kirtas",
     name: "상업 구획 폐건물", levelReq: 0, dangerLevel: "안전",
     tickSec: 8, actionType: "탐험", jobType: "searcher",
     art: "░▒▓█▓▒░\n▒▓████▓▒\n▓██████▓\n▒▓████▓▒\n░▒▓█▓▒░",
     desc: "도시가 숨을 거두던 날에도 간판은 켜져 있었다. 마나 결정이 균열 사이로 자라나고 있지만, 아직 거스름돈을 기다리는 카운터가 남아 있다.",
     dropTable: [
       { resourceType: "mana_crystal",   chance: 0.70, minQty: 1, maxQty: 3 },
-      { resourceType: "scrap_parts",     chance: 0.40, minQty: 1, maxQty: 2 },
+      { resourceType: "scrap_parts",    chance: 0.40, minQty: 1, maxQty: 2 },
       { resourceType: "blueprint_frag", chance: 0.05, minQty: 1, maxQty: 1 },
     ],
   },
   {
-    id: "camp3-factory", parentId: "urban-ruins",
+    id: "camp3-factory", parentId: "kirtas",
     name: "구 제조 공장 지하", levelReq: 0, dangerLevel: "보통",
     tickSec: 18, actionType: "작업", jobType: "technician",
     art: "▒░▒▓▒░▒\n░▓████▓░\n▓██▓███▓\n░▓████▓░\n▒░▒▓▒░▒",
     desc: "가동 정지 명령을 받지 못한 기계들이 지하 3층에서 아직 무언가를 찍어내고 있다. 순환회는 생산물의 정체를 공개하지 않는다.",
     dropTable: [
       { resourceType: "scrap_parts",     chance: 0.60, minQty: 2, maxQty: 4 },
-      { resourceType: "blueprint_frag", chance: 0.35, minQty: 1, maxQty: 2 },
+      { resourceType: "blueprint_frag",  chance: 0.35, minQty: 1, maxQty: 2 },
       { resourceType: "mana_crystal_mid", chance: 0.10, minQty: 1, maxQty: 1 },
     ],
   },
 
-  // ── Leaves: 마나 연구 구역 ───────────────────────────────────────────────
+  // ── Leaves: 붉은 협곡 ─────────────────────────────────────────────────────
   {
-    id: "camp3-mana-rift", parentId: "mana-research",
+    id: "camp3-mana-rift", parentId: "red-canyon",
     name: "마나 균열 지대", levelReq: 0, dangerLevel: "위험",
     tickSec: 25, actionType: "조사", jobType: "scholar",
     art: "░▒░▓░▒░\n▒▓▒█▒▓▒\n▓█▓▓▓█▓\n▒▓▒█▒▓▒\n░▒░▓░▒░",
@@ -84,11 +92,12 @@ const ZONE_DATA = [
       { resourceType: "mana_crystal_mid", chance: 0.55, minQty: 1, maxQty: 2 },
       { resourceType: "relic_frag",       chance: 0.25, minQty: 1, maxQty: 1 },
       { resourceType: "mana_crystal_adv", chance: 0.08, minQty: 1, maxQty: 1 },
-      { resourceType: "bss",              chance: 0.03, minQty: 1, maxQty: 1, onComplete: true },
     ],
   },
+
+  // ── Leaves: 회색 고원 ─────────────────────────────────────────────────────
   {
-    id: "camp3-ancient-lab", parentId: "mana-research",
+    id: "camp3-ancient-lab", parentId: "gray-plateau",
     name: "고대 연구소 잔해", levelReq: 15, dangerLevel: "위험",
     tickSec: 35, actionType: "조사", jobType: "scholar",
     art: "▓▒░▒░▒▓\n▒▓▒▓▒▓▒\n░▒▓███▒░\n▒▓▒▓▒▓▒\n▓▒░▒░▒▓",
@@ -97,95 +106,28 @@ const ZONE_DATA = [
       { resourceType: "mana_crystal_adv", chance: 0.45, minQty: 1, maxQty: 2 },
       { resourceType: "ancient_record",   chance: 0.20, minQty: 1, maxQty: 1 },
       { resourceType: "rare_relic",       chance: 0.10, minQty: 1, maxQty: 1 },
-      { resourceType: "bss",              chance: 0.08, minQty: 1, maxQty: 1, onComplete: true },
     ],
   },
+
+  // ── Leaves: 파이널 시티 외곽 ──────────────────────────────────────────────
   {
-    id: "camp3-void-depths", parentId: "mana-research", // Moved to mana-research for hierarchy
+    id: "camp3-void-depths", parentId: "final-city-outer",
     name: "공허 구역 심층부", levelReq: 20, dangerLevel: "극한",
     tickSec: 50, actionType: "탐험", jobType: "searcher",
     art: "█▓▒░▒▓█\n▓█▓▒▓█▓\n▒▓█▓█▓▒\n▓█▓▒▓█▓\n█▓▒░▒▓█",
     desc: "도시의 끝에서 공허가 시작된다. 이 지점을 지나 귀환한 탐색자의 기록은 없다 — 장비만 가끔 돌아온다.",
     dropTable: [
-      { resourceType: "rare_relic",  chance: 0.35, minQty: 1, maxQty: 1 },
-      { resourceType: "mutant_mat",  chance: 0.25, minQty: 1, maxQty: 2 },
+      { resourceType: "rare_relic",       chance: 0.35, minQty: 1, maxQty: 1 },
+      { resourceType: "mutant_mat",       chance: 0.25, minQty: 1, maxQty: 2 },
       { resourceType: "mana_crystal_adv", chance: 0.15, minQty: 2, maxQty: 3 },
-      { resourceType: "bss",         chance: 0.15, minQty: 1, maxQty: 1, onComplete: true },
-    ],
-  },
-
-  // ── Leaves: 외곽 자연 구역 (Phase B) ─────────────────────────────────────
-  {
-    id: "lumber-dead-forest", parentId: "outer-nature",
-    name: "고사목 숲", levelReq: 0, dangerLevel: "안전",
-    tickSec: 20, actionType: "벌목", jobType: "lumberjack",
-    art: "  /\\  \n /  \\ \n/____\\\n  ||  ",
-    desc: "말라죽은 나무들이 가득한 숲. 비록 생명력은 없으나 건축 자재로 쓰기 좋은 목재를 얻을 수 있다.",
-    dropTable: [
-      { resourceType: "wood", chance: 0.70, minQty: 1, maxQty: 2 },
-      { resourceType: "resin", chance: 0.30, minQty: 1, maxQty: 1 },
-    ],
-  },
-  {
-    id: "lumber-mutant-plants", parentId: "outer-nature",
-    name: "변이 식물군락", levelReq: 10, dangerLevel: "보통",
-    tickSec: 40, actionType: "벌목", jobType: "lumberjack",
-    art: " <&&> \n<&  &>\n <&&> \n  ||  ",
-    desc: "마나에 노출되어 기괴하게 성장한 식물들. 일반적인 목재와는 다른 특수한 성질을 지닌 자원을 제공한다.",
-    dropTable: [
-      { resourceType: "mutant_wood", chance: 0.60, minQty: 1, maxQty: 2 },
-      { resourceType: "spore_crystal", chance: 0.20, minQty: 1, maxQty: 1 },
-    ],
-  },
-  {
-    id: "lumber-forbidden-deep", parentId: "outer-nature",
-    name: "금단의 숲 심층부", levelReq: 30, dangerLevel: "위험",
-    tickSec: 60, actionType: "벌목", jobType: "lumberjack",
-    art: "!!!!!!!!\n!!/\\!!\n!/  \\!\n!!||!!",
-    desc: "빛조차 닿지 않는 숲의 심장부. 고대부터 존재해 온 거대 나무들이 잠들어 있다.",
-    dropTable: [
-      { resourceType: "ancient_wood", chance: 0.50, minQty: 1, maxQty: 1 },
-      { resourceType: "bss", chance: 0.10, minQty: 1, maxQty: 1, onComplete: true },
-    ],
-  },
-
-  // ── Leaves: 지하 광맥 구역 (Phase B) ─────────────────────────────────────
-  {
-    id: "miner-quarry", parentId: "underground-veins",
-    name: "얕은 채석장", levelReq: 0, dangerLevel: "보통",
-    tickSec: 25, actionType: "채굴", jobType: "miner",
-    art: " /--\\ \n|    |\n \\__/ ",
-    desc: "누구에게나 열려 있는 공공 채석장. 기본적인 석재와 소량의 철광석을 얻을 수 있다.",
-    dropTable: [
-      { resourceType: "stone", chance: 0.70, minQty: 2, maxQty: 4 },
-      { resourceType: "iron_ore", chance: 0.30, minQty: 1, maxQty: 2 },
-    ],
-  },
-  {
-    id: "miner-mana-vein", parentId: "underground-veins",
-    name: "마나석 광맥", levelReq: 15, dangerLevel: "위험",
-    tickSec: 45, actionType: "채굴", jobType: "miner",
-    art: " *  * \n* ** *\n *  * ",
-    desc: "푸른 빛을 내뿜는 마나석이 묻힌 광맥. 채굴 중 발생하는 마나 파동에 주의해야 한다.",
-    dropTable: [
-      { resourceType: "mana_stone", chance: 0.60, minQty: 1, maxQty: 2 },
-      { resourceType: "rare_mineral", chance: 0.20, minQty: 1, maxQty: 1 },
-    ],
-  },
-  {
-    id: "miner-crystal-cave", parentId: "underground-veins",
-    name: "심층 결정 동굴", levelReq: 35, dangerLevel: "극한",
-    tickSec: 70, actionType: "채굴", jobType: "miner",
-    art: " <><><>\n<><><>\n <><><>",
-    desc: "지하 깊은 곳, 거대한 결정들이 자라나는 동굴. 결정의 코어는 막대한 에너지를 담고 있다.",
-    dropTable: [
-      { resourceType: "crystal_core", chance: 0.50, minQty: 1, maxQty: 1 },
-      { resourceType: "bss", chance: 0.20, minQty: 1, maxQty: 1, onComplete: true },
     ],
   },
 ] as const;
 
 export async function seedZones() {
+  const currentIds = ZONE_DATA.map(z => z.id);
+
+  // 1. 현재 존 목록 upsert (parentId 업데이트 포함) → 먼저 해야 FK 참조가 정리됨
   await db
     .insert(zones)
     .values(ZONE_DATA.map(z => ({
@@ -204,6 +146,7 @@ export async function seedZones() {
         desc:        sql`excluded.desc`,
         art:         sql`excluded.art`,
         levelReq:    sql`excluded.level_req`,
+        sortOrder:   sql`excluded.sort_order`,
         dangerLevel: sql`excluded.danger_level`,
         tickSec:     sql`excluded.tick_sec`,
         actionType:  sql`excluded.action_type`,
@@ -211,6 +154,14 @@ export async function seedZones() {
         dropTable:   sql`excluded.drop_table`,
       },
     });
+
+  // 2. 구버전 존 삭제 (upsert 후라 FK 참조가 이미 새 존으로 옮겨진 상태)
+  // 2a. userExploration이 구버전 존을 참조하면 FK 위반 → 먼저 제거
+  await db.delete(userExploration).where(notInArray(userExploration.zoneId, currentIds));
+  // 2b. 자식 먼저 삭제 (self-ref FK)
+  await db.delete(zones).where(and(notInArray(zones.id, currentIds), isNotNull(zones.parentId)));
+  // 2c. 부모(루트) 삭제
+  await db.delete(zones).where(notInArray(zones.id, currentIds));
 
   console.log(`✅ Seeded ${ZONE_DATA.length} zones`);
 }

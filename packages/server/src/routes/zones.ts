@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { asc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { zones } from "../db/schema.js";
 
@@ -20,7 +21,7 @@ zonesRoute.get("/", async (c) => {
       dropTable:   zones.dropTable,
     })
     .from(zones)
-    .orderBy(zones.levelReq);
+    .orderBy(asc(zones.sortOrder), asc(zones.levelReq));
 
   return c.json({ success: true, data: rows });
 });
