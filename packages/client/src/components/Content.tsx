@@ -74,7 +74,11 @@ type NpcModalState = {
   count: number;
   isEnding?: boolean;
   coolProgress?: number;
-  isPostCooldown?: boolean; // 쿨타임 직후인지 여부
+  isPostCooldown?: boolean;    // 쿨타임 직후인지 여부
+  postCooldownPhase?: boolean; // 쿨타임 후 두 번째 대화부터 별도 리스트 사용
+  shownLines?: string[];       // 이미 나온 일반 대사 목록
+  shownPostLines?: string[];   // 이미 나온 쿨타임 후 대사 목록
+  permanentEnd?: boolean;      // 영구 대화 차단 (감정 소진)
 };
 
 const NPC_TITLES = ["방랑자", "순환회원", "잡역부", "채집꾼", "탐색자", "유랑자", "개척자", "폐허사냥꾼"];
@@ -104,6 +108,90 @@ const NPC_REASON: Record<string, string> = {
   "폐허사냥꾼":"위험한 곳일수록 값진 게 있거든요.",
 };
 
+// ─── 개척자_다온 대기 이전 대사 ───
+const DAON_TALK_LIST = [
+  "이 구역 지형이 아직 기록되지 않았어요. 함부로 움직이면 안 됩니다.",
+  "오늘 북동쪽 잔해지대를 탐색했어요. 예상보다 마나 균열이 많더군요.",
+  "지도에 없는 땅은 존재하지 않는 것과 같아요.",
+  "폐허라도 정확한 위치를 기록해야 해요. 그게 제 사명이에요.",
+  "저 잔해 더미, 위치 기록해도 될까요? 나중에 중요한 지형 표지가 될 수 있어요.",
+  "마나 농도가 짙어지면 지형 자체가 바뀌는 경우도 있어요. 그래서 계속 다시 봐야 해요.",
+  "길도 없이 돌아다니는 사람들을 보면 조마조마해요.",
+  "언젠가 이 구역 전체를 지도로 남기는 게 목표예요.",
+  "이 구역엔 이름이 없어요. 제가 임시로 '황야 지대 일곱째 구역'이라 불러요.",
+];
+
+// ─── 개척자_다온 쿨타임 후 전용 대사 ───
+const DAON_POST_COOLDOWN_LINES: string[] = [
+  "측량 마쳤어요. 예상보다 마나 잔류가 심하더군요.",
+  "북쪽 잔해지대에 균열이 새로 생겼어요. 지도를 고쳐야 해요.",
+  "생각보다 오래 걸렸어요. 현장이 예사롭지 않았거든요.",
+  "마나 흐름이 어젯밤과 달라요. 기록해뒀어요.",
+  "저쪽에 함몰지가 생겼어요. 지형 변동 기록에 추가해야겠어요.",
+  "아직 발을 들인 사람이 없는 구역이 많아요. 할 일이 산더미네요.",
+  "돌아왔어요. 보고가 필요하면 말해요.",
+  "위험 요소 셋 발견했어요. 마나 균열 둘, 불안정한 잔해 하나예요.",
+  "구역 명칭을 '황야 지대 일곱째 구역 남부'로 수정했어요. 더 정확한 구분이에요.",
+  "오늘 목표의 절반도 못 했어요. 예상보다 지형이 복잡했거든요.",
+];
+
+// ─── 유랑자_카라 쿨타임 후 전용 대사 ───
+const KARA_POST_COOLDOWN_LINES: string[] = [
+  "왔어요. 뭐 보러 갔는지 까먹었는데 그냥 왔어요.",
+  "생각했던 거랑 달랐어요. 뭘 생각했는지는 모르겠고.",
+  "어, 아직 여기 있었어요? 다행이다. 아, 아니 뭐가 다행인지는 모르겠지만.",
+  "별거 없었어요. 있었을 수도 있는데 저는 몰랐을 수도 있고.",
+  "생각보다 멀었어요. 아니면 제가 느린 건가.",
+  "다녀왔어요. 딱히 할 말은 없는데 그냥 말하고 싶었어요.",
+  "저 없는 동안 뭐 했어요? 아, 대답 안 해도 돼요.",
+  "이상한 거 봤는데 설명하기가 애매해요. 그냥 이상했어요.",
+  "금방 온다고 했는데, 금방이 맞나요?",
+  "왔어요. 어, 반갑다. 저만 그런가.",
+];
+
+// ─── 잡역부_미르 쿨타임 후 전용 대사 (여기에 추가) ───
+const MIR_POST_COOLDOWN_LINES: string[] = [
+  "혹시, 순환회에서 오셨나요?",
+  "높은 직급이면.. 곤란한데.. 일반인 맞죠?",
+  "그래도 오늘은 덥지는 않네. 편하게 말해도 되겠죠?",
+  "마나폭풍은, 들어가본 사람이 드물다고 해.",
+  "아무리 그래도, 할건 해야지. 일하러 안가?",
+  "아는 사람이 순환회 들어간 뒤로 연락이 없어.",
+  "여기서 오래 일하다 보면, 다들 어디론가 가버려.",
+  "잔해 치우는 일이 이렇게 길어질 줄은 몰랐는데.",
+  "가끔은 내가 이 구역에 박혀있는 건지, 선택한 건지 모르겠어.",
+  "마나 노출 수치가 오른다는데. 뭐, 어쩌겠어.",
+  "파이널 시티 안쪽은 밤에도 밝다던데. 한 번도 못 가봤어.",
+  "먼저 간 사람들이 나쁜 게 아니라는 거 알아. 근데 가끔은 서운하더라고.",
+  "집으로 갈 시간이 되면 기분이 좋아야 하는데, 요즘은 그냥 그래.",
+  "이 구역에 새로 온 사람들은 다 눈이 살아있어. 나도 그랬을 텐데.",
+  "뭐, 일이 있다는 게 어디야. 그렇게 생각하려고.",
+  "카라랑 이야기 해본적 있어요? 저번에 사고 쳤다던데.",
+  "불안해. 미칠거 같아!",
+];
+
+// ─── 잡역부_미르 조건부 대사: requires 대사가 나온 후에만 등장 ───
+const MIR_POST_COOLDOWN_CONDITIONAL: { line: string; requires: string }[] = [
+  { line: "카라는 생각보다 순수한 놈이야. 가만 보면 귀엽다니까.", requires: "카라랑 이야기 해본적 있어요? 저번에 사고 쳤다던데." },
+  // ── "불안해" 이후 감정 체인 (10개 소진 시 영구 차단) ──
+  { line: "아, 미안해요. 갑자기 이런 말 해서.", requires: "불안해. 미칠거 같아!" },
+  { line: "그냥... 요즘 잠을 잘 못 자서 그래요.", requires: "불안해. 미칠거 같아!" },
+  { line: "가끔은 이 구역이 나를 집어삼킬 것 같은 기분이 들어.", requires: "불안해. 미칠거 같아!" },
+  { line: "별거 아닌데. 그냥 가끔 그래요.", requires: "불안해. 미칠거 같아!" },
+  { line: "있잖아요, 당신한테만 하는 말인데.", requires: "불안해. 미칠거 같아!" },
+  { line: "마나 노출 때문인지, 요즘 꿈이 이상해.", requires: "불안해. 미칠거 같아!" },
+  { line: "아무한테도 말 못 했어. 이런 거.", requires: "불안해. 미칠거 같아!" },
+  { line: "그냥 들어줘서 고마워요. 정말로.", requires: "불안해. 미칠거 같아!" },
+  { line: "이제 좀 괜찮아진 것 같아. 고마워요.", requires: "불안해. 미칠거 같아!" },
+  { line: "다음에 또 봐요. 아마.", requires: "불안해. 미칠거 같아!" },
+];
+
+// 이 체인이 전부 소진되면 영구 차단
+const MIR_BURNOUT_TRIGGER = "불안해. 미칠거 같아!";
+const MIR_BURNOUT_CHAIN = MIR_POST_COOLDOWN_CONDITIONAL
+  .filter(c => c.requires === MIR_BURNOUT_TRIGGER)
+  .map(c => c.line);
+
 // ─── NPC 대사 리스트 (여기에 주실 리스트를 추가하면 됩니다) ───
 const MIR_TALK_LIST = [
   "순환회에서 감투를 쓴 그새끼. 왜이렇게 꺼드럭대는지 모르겠네요.",
@@ -118,8 +206,24 @@ const MIR_TALK_LIST = [
   // ... 추가될 대사들은 여기에 계속 넣으면 됩니다.
 ];
 
+// ─── 유랑자_카라 대기 이전 대사 ───
+const KARA_TALK_LIST = [
+  "어, 왔어요? 저 지금 뭐 하고 있었는지 까먹었는데.",
+  "오늘 하늘 봤어요? 저는 봤는데, 그냥 봤어요.",
+  "배고프다. 아, 근데 밥 먹었나? 먹었던 것 같기도 하고.",
+  "저 사실 이름 잘 못 외워요. 당신 이름이 뭐였더라.",
+  "마나 결정 주우면 예쁘잖아요. 저만 그렇게 생각하나요?",
+  "어제 넘어져서 무릎 긁혔어요. 괜찮아요 그냥.",
+  "저 여기 오래 있었는데 아직도 길을 잘 모르겠어요.",
+  "저한테 화났어요? 아닌 것 같기도 하고.",
+  "오늘따라 별로 할말이 없네요. 그냥 여기 있고 싶어서요.",
+  "저 가끔 생각이 너무 많아지면 그냥 멍하니 있어요. 지금처럼요.",
+];
+
 const NPC_SPECIAL_LINES: Record<string, string[]> = {
-  "잡역부_미르": MIR_TALK_LIST,
+  "미르": MIR_TALK_LIST,
+  "카라": KARA_TALK_LIST,
+  "다온": DAON_TALK_LIST,
 };
 
 function lcg(seed: number) {
@@ -138,7 +242,7 @@ function zoneNpcs(zoneId: string, count = 3): string[] {
   });
 }
 
-function npcDialog(npcName: string, zoneId: string, idx: number, talkCount: number = 0, excludeLine?: string, isPostCooldown?: boolean): { lines: string[], isEnding: boolean } {
+function npcDialog(npcName: string, zoneId: string, idx: number, talkCount: number = 0, shownLines?: string[], isPostCooldown?: boolean): { lines: string[], isEnding: boolean } {
   let seed = 0;
   for (let i = 0; i < zoneId.length; i++) seed = (seed * 31 + zoneId.charCodeAt(i)) >>> 0;
   seed ^= (idx + 1) * 0xf00dbabe;
@@ -146,30 +250,53 @@ function npcDialog(npcName: string, zoneId: string, idx: number, talkCount: numb
   const title  = npcName.split("_")[0];
   const reason = NPC_REASON[title] ?? "딱히 이유는 없어요.";
 
+  const charName = npcName.split("_")[1] ?? npcName;
+
   // 특수 대사가 있는 NPC인 경우
-  if (NPC_SPECIAL_LINES[npcName]) {
+  if (NPC_SPECIAL_LINES[charName]) {
+    // 첫 만남 고정 대사
+    if (charName === "미르" && talkCount === 1) {
+      return { lines: [reason, "그래도, 할 일이 있어서 다행이네요."], isEnding: false };
+    }
+    if (charName === "다온" && talkCount === 1) {
+      return { lines: [reason, "이 구역은 아직 미기록 지역이에요. 가볍게 보면 안 됩니다."], isEnding: false };
+    }
+
     // 쿨타임 직후에는 지정된 대사 고정
     if (isPostCooldown) {
+      if (charName === "미르") {
+        return { lines: ["...", "좋아요. 무슨 말이 하고싶은건가요?"], isEnding: false };
+      }
+      if (charName === "카라") {
+        const line = KARA_POST_COOLDOWN_LINES[Math.floor(Math.random() * KARA_POST_COOLDOWN_LINES.length)];
+        return { lines: ["...", line], isEnding: false };
+      }
+      if (charName === "다온") {
+        const line = DAON_POST_COOLDOWN_LINES[Math.floor(Math.random() * DAON_POST_COOLDOWN_LINES.length)];
+        return { lines: ["...", line], isEnding: false };
+      }
       return { lines: ["...", "하, 이런 곳에서도 수다를 좋아하는 분이 있네."], isEnding: false };
     }
 
-    const specials = [...NPC_SPECIAL_LINES[npcName]];
-    
-    if (npcName === "잡역부_미르" && talkCount >= 5) {
+    let specials = [...NPC_SPECIAL_LINES[charName]];
+
+    if (charName === "미르" && talkCount >= 5) {
       specials.push("저기, 그렇게 한가해요?");
     }
-
-    const isRandom = idx !== Math.floor(idx);
-    let i1 = isRandom
-      ? Math.floor(Math.random() * specials.length)
-      : Math.floor(lcg(seed ^ 0x1111) * specials.length);
-
-    if (specials.length > 1 && specials[i1] === excludeLine) {
-      i1 = (i1 + 1) % specials.length;
+    if (charName === "카라" && talkCount >= 5) {
+      specials.push("잠깐만. 저게 뭔지좀 보고 올게!");
+    }
+    if (charName === "다온" && talkCount >= 5) {
+      specials.push("잠깐, 저 구역 측량이 필요해요. 곧 돌아올게요.");
     }
 
-    const chosenLine = specials[i1];
-    const isEnding = chosenLine === "저기, 그렇게 한가해요?";
+    // 이미 나온 대사 제외
+    const shown = shownLines ?? [];
+    const remaining = specials.filter(l => !shown.includes(l));
+    if (remaining.length > 0) specials = remaining;
+
+    const chosenLine = specials[Math.floor(Math.random() * specials.length)];
+    const isEnding = chosenLine === "저기, 그렇게 한가해요?" || chosenLine === "잠깐만. 저게 뭔지좀 보고 올게!" || chosenLine === "잠깐, 저 구역 측량이 필요해요. 곧 돌아올게요.";
     
     const displayReason = talkCount === 1 ? reason : "...";
 
@@ -249,7 +376,7 @@ export default function Content() {
 
   // NPC 대화 쿨타임 타이머
   useEffect(() => {
-    if (!npcModal?.isEnding) return;
+    if (!npcModal?.isEnding || npcModal?.permanentEnd) return;
 
     const duration = 5000; // 5초 쿨타임
     const interval = 50;   // 0.05초마다 갱신
@@ -339,13 +466,14 @@ export default function Content() {
     ...path.map(id => ({ id, label: findNode(roots, id)?.name ?? id })),
   ];
 
-  const goBack = () => setPath(p => p.slice(0, -1));
+  const goBack = () => { setNpcModal(null); setPath(p => p.slice(0, -1)); };
 
   const navigate = (id: string) => {
     if (findNode(roots, id)) setPath(p => [...p, id]);
   };
 
   const navigateToCrumb = (id: string) => {
+    setNpcModal(null);
     if (id === "__root__") {
       setPath([]);
     } else {
@@ -450,7 +578,7 @@ export default function Content() {
         <div className="nav-list">
           {npcModal ? (
             <>
-              {npcModal.isEnding && (
+              {npcModal.isEnding && !npcModal.permanentEnd && (
                 <div style={{ 
                   height: '2px', // 더 얇게
                   background: 'rgba(0,0,0,0.3)', 
@@ -459,12 +587,12 @@ export default function Content() {
                   position: 'relative',
                   zIndex: 10
                 }}>
-                  <div style={{ 
-                    height: '100%', 
-                    background: 'var(--region-primary)', // 주황색으로 변경
+                  <div style={{
+                    height: '100%',
+                    background: '#CC785C',
                     width: `${npcModal.coolProgress || 0}%`,
                     transition: 'width 0.05s linear',
-                    boxShadow: '0 0 4px var(--region-glow)' // 주황색 글로우
+                    boxShadow: '0 0 6px rgba(204, 120, 92, 0.5)'
                   }} />
                 </div>
               )}
@@ -482,13 +610,122 @@ export default function Content() {
                     if (!current) return null;
                     const nextCount = current.count + 1;
                     // current.lines[1]은 실제 대사 줄이므로 이를 excludeLine으로 전달
-                    const { lines, isEnding } = npcDialog(current.name, currentNode?.id || 'world', Math.random(), nextCount, current.lines[1]);
-                    return { 
-                      ...current, 
+                    // 쿨타임 후 첫 클릭: "좋아요..." 대사를 보여주고 postCooldownPhase 진입
+                    if (current.isPostCooldown) {
+                      const { lines, isEnding } = npcDialog(current.name, currentNode?.id || 'world', Math.random(), nextCount, undefined, true);
+                      return {
+                        ...current,
+                        count: nextCount,
+                        lines,
+                        isEnding,
+                        isPostCooldown: false,
+                        postCooldownPhase: true,
+                      };
+                    }
+                    // postCooldownPhase: 다온 전용 리스트에서 대사 선택 (랜덤, 중복 없음)
+                    if (current.postCooldownPhase && current.name.split("_")[1] === "다온") {
+                      const shown = current.shownPostLines ?? [];
+                      const remaining = DAON_POST_COOLDOWN_LINES.filter(l => !shown.includes(l));
+                      if (remaining.length === 0) {
+                        return {
+                          ...current,
+                          count: nextCount,
+                          lines: ["...", "오늘 탐색 기록은 여기까지예요. 정리하러 가야 해요."],
+                          isEnding: true,
+                          permanentEnd: true,
+                          postCooldownPhase: true,
+                          shownPostLines: shown,
+                        };
+                      }
+                      const line = remaining[Math.floor(Math.random() * remaining.length)];
+                      return {
+                        ...current,
+                        count: nextCount,
+                        lines: ["...", line],
+                        isEnding: false,
+                        postCooldownPhase: true,
+                        shownPostLines: [...shown, line],
+                      };
+                    }
+                    // postCooldownPhase: 카라 전용 리스트에서 대사 선택 (랜덤, 중복 없음)
+                    if (current.postCooldownPhase && current.name.split("_")[1] === "카라") {
+                      const shown = current.shownPostLines ?? [];
+                      const remaining = KARA_POST_COOLDOWN_LINES.filter(l => !shown.includes(l));
+                      if (remaining.length === 0) {
+                        return {
+                          ...current,
+                          count: nextCount,
+                          lines: ["...", "아 잠시 저 어디 좀 갔다올게요!"],
+                          isEnding: true,
+                          permanentEnd: true,
+                          postCooldownPhase: true,
+                          shownPostLines: shown,
+                        };
+                      }
+                      const line = remaining[Math.floor(Math.random() * remaining.length)];
+                      return {
+                        ...current,
+                        count: nextCount,
+                        lines: ["...", line],
+                        isEnding: false,
+                        postCooldownPhase: true,
+                        shownPostLines: [...shown, line],
+                      };
+                    }
+                    // postCooldownPhase: 미르 전용 리스트에서 대사 선택
+                    if (current.postCooldownPhase && current.name.split("_")[1] === "미르") {
+                      const shown = current.shownPostLines ?? [];
+
+                      // 번아웃 체인 진행 중이면 순서대로
+                      if (shown.includes(MIR_BURNOUT_TRIGGER)) {
+                        const nextBurnoutLine = MIR_BURNOUT_CHAIN.find(l => !shown.includes(l));
+                        if (nextBurnoutLine) {
+                          const newShown = [...shown, nextBurnoutLine];
+                          const burnoutDone = MIR_BURNOUT_CHAIN.every(l => newShown.includes(l));
+                          return {
+                            ...current,
+                            count: nextCount,
+                            lines: ["...", nextBurnoutLine],
+                            isEnding: burnoutDone,
+                            permanentEnd: burnoutDone,
+                            postCooldownPhase: true,
+                            shownPostLines: newShown,
+                          };
+                        }
+                      }
+
+                      // 일반 풀 + 카라 조건부 (랜덤)
+                      const conditional = MIR_POST_COOLDOWN_CONDITIONAL
+                        .filter(c => c.requires !== MIR_BURNOUT_TRIGGER && shown.includes(c.requires) && !shown.includes(c.line))
+                        .map(c => c.line);
+                      const remaining = [
+                        ...MIR_POST_COOLDOWN_LINES.filter(l => !shown.includes(l)),
+                        ...conditional,
+                      ];
+                      if (remaining.length === 0) {
+                        return { ...current, lines: ["...", "..."], isEnding: false };
+                      }
+                      const line = remaining[Math.floor(Math.random() * remaining.length)];
+                      return {
+                        ...current,
+                        count: nextCount,
+                        lines: ["...", line],
+                        isEnding: false,
+                        postCooldownPhase: true,
+                        shownPostLines: [...shown, line],
+                      };
+                    }
+                    // 일반 대화: 이미 나온 대사 제외하고 선택
+                    const shown = current.shownLines ?? [];
+                    const { lines, isEnding } = npcDialog(current.name, currentNode?.id || 'world', Math.random(), nextCount, shown);
+                    const newShown = lines[1] ? [...shown, lines[1]] : shown;
+                    return {
+                      ...current,
                       count: nextCount,
                       lines,
                       isEnding,
-                      isPostCooldown: false // 대화를 이어가면 플래그 해제
+                      isPostCooldown: false,
+                      shownLines: newShown,
                     };
                   });
                 }}
@@ -606,12 +843,13 @@ export default function Content() {
                       className="nav-row nav-row--npc"
                       onClick={() => {
                         const { lines, isEnding } = npcDialog(npcName, leaf.id, i, 1);
-                        setNpcModal({ 
-                          name: npcName, 
+                        setNpcModal({
+                          name: npcName,
                           lines,
                           count: 1,
                           isEnding,
-                          isPostCooldown: false
+                          isPostCooldown: false,
+                          shownLines: lines[1] ? [lines[1]] : [],
                         });
                       }}
                     >

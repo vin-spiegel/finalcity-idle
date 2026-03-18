@@ -76,7 +76,8 @@ export const zones = pgTable("zones", {
   name:        text("name").notNull(),
   desc:        text("desc").notNull().default(""),
   art:         text("art").notNull().default(""),
-  levelReq:    integer("level_req").notNull().default(1),
+  levelReq:    integer("level_req").notNull().default(0),
+  sortOrder:   integer("sort_order").notNull().default(0),
   dangerLevel: text("danger_level").notNull().default("안전"),
   // leaf-only (null for branch nodes):
   tickSec:     integer("tick_sec"),

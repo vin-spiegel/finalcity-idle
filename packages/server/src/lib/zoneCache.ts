@@ -1,3 +1,4 @@
+import { asc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { zones } from "../db/schema.js";
 
@@ -7,7 +8,7 @@ let cache: ZoneRow[] | null = null;
 
 export async function getZones(): Promise<ZoneRow[]> {
   if (!cache) {
-    cache = await db.select().from(zones).orderBy(zones.levelReq);
+    cache = await db.select().from(zones).orderBy(asc(zones.sortOrder), asc(zones.levelReq));
   }
   return cache;
 }
