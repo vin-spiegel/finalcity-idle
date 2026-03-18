@@ -9,9 +9,11 @@ type Props = {
   sidebarOpen: boolean;
   activeTab: SidebarTab;
   onTabClick: (tab: SidebarTab) => void;
+  partySlot1: string | null;
+  onNavigateToActive: () => void;
 };
 
-export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
+export default function Topbar({ sidebarOpen, activeTab, onTabClick, partySlot1, onNavigateToActive }: Props) {
   const { state, circleTickRef, zones, navigateToActiveRef } = useGame();
   const { character, resources, currentAction, isExploring } = state;
 
@@ -33,11 +35,18 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick }: Props) {
       <div className="top-spacer" />
 
       {activeZone && (
-        <div className="top-action-status" onClick={() => navigateToActiveRef.current?.()}>
-          <span className="top-action-dot">◉</span>
-          <span className="top-action-label">{activeZone.actionType ?? '탐험'}</span>
-          <span className="top-action-sep">·</span>
-          <span className="top-action-zone">{activeZone.name}</span>
+        <div className="top-action-status" onClick={() => { onNavigateToActive(); navigateToActiveRef.current?.(); }} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className="top-action-dot">◉</span>
+            <span className="top-action-label">{activeZone.actionType ?? '탐험'}</span>
+            <span className="top-action-sep">·</span>
+            <span className="top-action-zone">{activeZone.name}</span>
+          </div>
+          {partySlot1 && partySlot1 !== "__player__" && (
+            <div style={{ fontSize: 9, color: "var(--amber-dim)", opacity: 0.6, paddingLeft: 2 }}>
+              동행 · {partySlot1.split("_")[1] ?? partySlot1}
+            </div>
+          )}
         </div>
       )}
 

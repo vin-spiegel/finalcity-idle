@@ -15,6 +15,14 @@ const ZONE_DATA = [
     tickSec: null, actionType: null, jobType: null, dropTable: null,
   },
 
+  // ── Branch: 베이스캠프 ────────────────────────────────────────────────────
+  {
+    id: "basecamp", parentId: "world",
+    name: "베이스캠프", levelReq: 0, sortOrder: 0, dangerLevel: "안전",
+    desc: "탐색대들이 모여드는 유일한 안전 구역. 순환회의 감시 아래 운영된다.",
+    art: "", tickSec: null, actionType: null, jobType: null, dropTable: null,
+  },
+
   // ── Branch: 키르타스 평원 ──────────────────────────────────────────────────
   {
     id: "kirtas", parentId: "world",
