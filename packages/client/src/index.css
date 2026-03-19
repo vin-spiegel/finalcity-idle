@@ -261,6 +261,44 @@ body {
   color: #fff;
 }
 
+/* ── Volume popup ── */
+.topbar-vol-wrap {
+  position: relative;
+}
+.topbar-vol-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--panel-deep);
+  border: 1px solid var(--border-dim);
+  z-index: 200;
+  white-space: nowrap;
+}
+.vol-mute-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: none; border: 1px solid var(--border-dim);
+  color: var(--text-dim); cursor: pointer; font-family: inherit;
+  transition: color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.vol-mute-btn:hover { color: var(--text); border-color: var(--border); }
+.vol-mute-btn.muted { color: var(--red-dim); border-color: var(--red-dim); }
+.vol-slider {
+  width: 90px;
+  accent-color: var(--amber-dim);
+  cursor: pointer;
+}
+.vol-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 20px;
+  text-align: right;
+}
 
 .nearby-topbar {
   display: flex;
