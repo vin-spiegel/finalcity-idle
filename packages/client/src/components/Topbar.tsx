@@ -1,7 +1,8 @@
-import { Bell, MessageSquare, Twitter } from 'lucide-react';
+import { Bell, MessageSquare, Twitter, Volume2, VolumeX } from 'lucide-react';
 import avatar from '../assets/image.png';
 import type { SidebarTab } from '../App';
 import { useGame, CIRCLE_CIRCUMFERENCE } from '../context/GameContext';
+import { useState, useRef, useEffect } from 'react';
 
 const NOTIF_COUNT = 3;
 
@@ -16,6 +17,22 @@ type Props = {
 export default function Topbar({ sidebarOpen, activeTab, onTabClick, partySlot1, onNavigateToActive }: Props) {
   const { state, circleTickRef, zones, navigateToActiveRef } = useGame();
   const { character, resources, currentAction, isExploring } = state;
+
+  const [volume, setVolume] = useState(80);
+  const [muted, setMuted] = useState(false);
+  const [volOpen, setVolOpen] = useState(false);
+  const volRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!volOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (volRef.current && !volRef.current.contains(e.target as Node)) {
+        setVolOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [volOpen]);
 
   const isActive = (tab: SidebarTab) => sidebarOpen && activeTab === tab;
 
@@ -75,6 +92,36 @@ export default function Topbar({ sidebarOpen, activeTab, onTabClick, partySlot1,
       <div className="top-divider">|</div>
 
       <div className="topbar-actions">
+        <div className="topbar-vol-wrap" ref={volRef}>
+          <button
+            className={`topbar-icon-btn${volOpen ? ' active' : ''}`}
+            onClick={() => setVolOpen(v => !v)}
+            title="볼륨"
+          >
+            {muted || volume === 0 ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          </button>
+          {volOpen && (
+            <div className="topbar-vol-popup">
+              <button
+                className={`vol-mute-btn${muted ? ' muted' : ''}`}
+                onClick={() => setMuted(m => !m)}
+                title={muted ? '음소거 해제' : '음소거'}
+              >
+                {muted || volume === 0 ? <VolumeX size={12} /> : <Volume2 size={12} />}
+              </button>
+              <input
+                className="vol-slider"
+                type="range"
+                min={0}
+                max={100}
+                value={muted ? 0 : volume}
+                onChange={e => { setVolume(Number(e.target.value)); setMuted(false); }}
+              />
+              <span className="vol-label">{muted ? 0 : volume}</span>
+            </div>
+          )}
+        </div>
+
         <button
           className="topbar-icon-btn"
           onClick={() => window.open('https://x.com/finalcity_game', '_blank')}
