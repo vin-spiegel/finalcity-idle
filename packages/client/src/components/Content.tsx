@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
@@ -855,6 +855,28 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
   const [slot1Member,       setSlot1Member]       = useState<string | null>(null); // "__player__" | NPC이름 | null
   const [teamPopupLeaf,     setTeamPopupLeaf]     = useState<ZoneNode | null>(null);
 
+  // ── 방문객 시스템 ──
+  const VISITOR_COOLDOWN = 5 * 60 * 60 * 1000; // 5시간
+  const VISITOR_SLOT_COUNT = 5;
+
+  type VisitorSlot = { visitor: string | null; nextVisitorAt: number; unlocked: boolean };
+
+  const [hiredCompanions, setHiredCompanions] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("hiredCompanions") ?? "[]"); } catch { return []; }
+  });
+  const [visitorSlots, setVisitorSlots] = useState<VisitorSlot[]>(() => {
+    try {
+      const saved = localStorage.getItem("visitorSlots");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return Array.from({ length: VISITOR_SLOT_COUNT }, (_, i) => ({
+      visitor: null,
+      nextVisitorAt: Date.now() + VISITOR_COOLDOWN,
+      unlocked: i === 0,
+    }));
+  });
+  const [tickNow, setTickNow] = useState(Date.now());
+
   const ALL_PARTY_NPCS = [
     "잡역부_미르", "유랑자_카라", "개척자_다온",
     "순환회원_시오", "폐허사냥꾼_하켄", "채집꾼_세라",
@@ -863,6 +885,53 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
     "방랑자_이든",
     "순환회원_카이", "순환회원_펜", "순환회원_유이", "순환회원_렌", "순환회원_토르",
   ];
+
+  // 방문객 타이머 (1초 tick)
+  const visitorSlotsRef = useRef(visitorSlots);
+  visitorSlotsRef.current = visitorSlots;
+  const hiredCompanionsRef = useRef(hiredCompanions);
+  hiredCompanionsRef.current = hiredCompanions;
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      setTickNow(now);
+      const slots = visitorSlotsRef.current;
+      let changed = false;
+      const next = slots.map(slot => {
+        if (!slot.unlocked || now < slot.nextVisitorAt) return slot;
+        let newNextAt = slot.nextVisitorAt;
+        while (newNextAt <= now) newNextAt += VISITOR_COOLDOWN;
+        // 이미 다른 슬롯에 나온 방문객 제외
+        const occupied = slots.map(s => s.visitor).filter(Boolean);
+        const pool = ALL_PARTY_NPCS.filter(n => !hiredCompanionsRef.current.includes(n) && !occupied.includes(n));
+        const picked = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
+        changed = true;
+        return { ...slot, visitor: picked, nextVisitorAt: newNextAt };
+      });
+      if (changed) {
+        setVisitorSlots(next);
+        localStorage.setItem("visitorSlots", JSON.stringify(next));
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fmtCountdown = (target: number) => {
+    const diff = Math.max(0, target - tickNow);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return `${h}h ${m}m ${s}s`;
+  };
+
+  const hireVisitor = (slotIdx: number) => {
+    const visitor = visitorSlots[slotIdx]?.visitor;
+    if (!visitor || hiredCompanions.includes(visitor)) return;
+    const updated = [...hiredCompanions, visitor];
+    setHiredCompanions(updated);
+    localStorage.setItem("hiredCompanions", JSON.stringify(updated));
+  };
 
   const NPC_LOCATION: Record<string, string> = {
     "잡역부_미르":      "상업 구획 폐건물",
@@ -1334,34 +1403,7 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
             onClick={e => e.stopPropagation()}
           >
             <button onClick={() => setAddCompanionOpen(false)} style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", color: "var(--text-dim)", fontSize: 16, cursor: "pointer" }}>✕</button>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>동행 선택</div>
-
-            {/* 상태 토글 */}
-            {(() => {
-              const filters: Array<{ key: "all" | "available" | "busy"; label: string }> = [
-                { key: "all",       label: "전체" },
-                { key: "available", label: "대기중" },
-                { key: "busy",      label: "작업중" },
-              ];
-              return (
-                <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                  {filters.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => setPartyStatusFilter(f.key)}
-                      style={{
-                        padding: "3px 10px", fontSize: 11, borderRadius: 12, border: "1px solid", cursor: "pointer",
-                        borderColor: partyStatusFilter === f.key ? "var(--amber)" : "var(--border)",
-                        backgroundColor: partyStatusFilter === f.key ? "var(--amber)" : "transparent",
-                        color: partyStatusFilter === f.key ? "#000" : "var(--text-dim)",
-                      }}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              );
-            })()}
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>동행 선택</div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
 
@@ -1391,23 +1433,13 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                 </div>
               )}
 
-              {ALL_PARTY_NPCS
-                .filter(npcName => {
-                  const isAvailable = NPC_LOCATION[npcName] === "베이스캠프";
-                  if (partyStatusFilter === "available") return isAvailable;
-                  if (partyStatusFilter === "busy")      return !isAvailable;
-                  return true;
-                })
-                .sort((a, b) => {
-                  // 대기중 먼저 (전체 탭일 때만 소팅)
-                  if (partyStatusFilter !== "all") return 0;
-                  const aAvail = NPC_LOCATION[a] === "베이스캠프" ? 0 : 1;
-                  const bAvail = NPC_LOCATION[b] === "베이스캠프" ? 0 : 1;
-                  return aAvail - bAvail;
-                })
-                .map(npcName => {
+              {hiredCompanions.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "10px 0", textAlign: "center", opacity: 0.6 }}>
+                  베이스캠프 → 동행 탭에서 동행인을 먼저 고용하세요.
+                </div>
+              ) : (
+                hiredCompanions.map(npcName => {
                   const profile = NPC_PROFILES[npcName];
-                  const isAvailable = NPC_LOCATION[npcName] === "베이스캠프";
                   return (
                     <div
                       key={npcName}
@@ -1427,12 +1459,13 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                           ))}
                         </div>
                       </div>
-                      <div style={{ fontSize: 10, color: isAvailable ? "var(--text-dim)" : "var(--amber-dim)", opacity: isAvailable ? 0.7 : 0.5, flexShrink: 0 }}>
-                        {isAvailable ? "대기중" : "작업중"}
+                      <div style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.7, flexShrink: 0 }}>
+                        대기중
                       </div>
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
           </div>
         </div>
@@ -1570,129 +1603,97 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
               </div>
             </div>
 
-            {/* NPC 선택 화면 */}
-            {partySlotSelect ? (
-              <>
-                {/* 필터 버튼 */}
-                {(() => {
-                  const jobs = Array.from(new Set(ALL_PARTY_NPCS.map(n => n.split("_")[0])));
-                  const statusFilters: Array<{ key: "all" | "available" | "busy"; label: string }> = [
-                    { key: "all",       label: "전체" },
-                    { key: "available", label: "대기중" },
-                    { key: "busy",      label: "작업중" },
-                  ];
-                  const statusBtnStyle = (key: string) => ({
-                    padding: "3px 10px", fontSize: 11, borderRadius: 12,
-                    border: "1px solid", cursor: "pointer",
-                    borderColor: partyStatusFilter === key ? "var(--amber)" : "var(--border)",
-                    backgroundColor: partyStatusFilter === key ? "var(--amber)" : "transparent",
-                    color: partyStatusFilter === key ? "#000" : "var(--text-dim)",
-                  });
-                  const jobBtnStyle = (key: string) => ({
-                    padding: "3px 10px", fontSize: 11, borderRadius: 12,
-                    border: "1px solid", cursor: "pointer",
-                    borderColor: partyJobFilter === key ? "var(--amber)" : "var(--border)",
-                    backgroundColor: partyJobFilter === key ? "var(--amber)" : "transparent",
-                    color: partyJobFilter === key ? "#000" : "var(--text-dim)",
-                  });
+            {/* ── 방문객 슬롯 ── */}
+            <div style={{ padding: "12px 14px 0" }}>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>
+                방문객 슬롯
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {visitorSlots.map((slot, idx) => {
+                  if (!slot.unlocked) {
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", opacity: 0.4, backgroundColor: "rgba(0,0,0,0.2)" }}>
+                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--text-dim)" }}>🔒</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 600 }}>슬롯 {idx + 1}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-dim)" }}>해금 필요</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (!slot.visitor) {
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", backgroundColor: "rgba(0,0,0,0.1)" }}>
+                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "var(--text-dim)", opacity: 0.4 }}>···</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>슬롯 {idx + 1} · 대기 중</div>
+                          <div style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.6, marginTop: 2 }}>다음 방문객까지 · {fmtCountdown(slot.nextVisitorAt)}</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const isHired = hiredCompanions.includes(slot.visitor);
                   return (
-                    <div style={{ padding: "8px 12px 4px" }}>
-                      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                        {statusFilters.map(f => (
-                          <button key={f.key} onClick={() => setPartyStatusFilter(f.key)} style={statusBtnStyle(f.key)}>
-                            {f.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {jobs.map(j => (
-                          <button key={j} onClick={() => setPartyJobFilter(partyJobFilter === j ? null : j)} style={jobBtnStyle(j)}>
-                            {j}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              <div className="nav-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                <div className="nav-row" onClick={() => { setPartySlotSelect(false); setPartyStatusFilter("all"); setPartyJobFilter(null); }}>
-                  <div className="nav-row-info">
-                    <div className="nav-row-name">← 돌아가기</div>
-                  </div>
-                </div>
-                {ALL_PARTY_NPCS.filter(npcName => {
-                  const isAvailable = NPC_LOCATION[npcName] === "베이스캠프";
-                  const statusOk =
-                    partyStatusFilter === "all"       ? true :
-                    partyStatusFilter === "available" ? isAvailable :
-                    !isAvailable;
-                  const jobOk = partyJobFilter ? npcName.split("_")[0] === partyJobFilter : true;
-                  return statusOk && jobOk;
-                }).map((npcName) => (
-                  <div
-                    key={npcName}
-                    className={`nav-row nav-row--npc${partySlot1 === npcName ? " nav-row--active" : ""}`}
-                    onClick={() => setNpcDetailPopup(npcName)}
-                  >
-                    <img className="nav-row-avatar" src={avatar} alt={npcName} />
-                    <div className="nav-row-info">
-                      <div className="nav-row-name">{npcName}</div>
-                      {NPC_LOCATION[npcName] === "베이스캠프" ? (
-                        <div className="nav-row-sub" style={{ color: "var(--text-dim)", fontSize: 11 }}>
-                          베이스캠프 상주
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: `1px solid ${isHired ? "var(--border)" : "var(--amber-dim)"}`, backgroundColor: isHired ? "rgba(0,0,0,0.1)" : "rgba(181,137,0,0.06)" }}>
+                      <img src={avatar} alt={slot.visitor} style={{ width: 44, height: 44, borderRadius: 4, border: "1px solid var(--border)" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{slot.visitor}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-dim)" }}>
+                          {isHired ? "✓ 고용됨" : `교체까지 · ${fmtCountdown(slot.nextVisitorAt)}`}
                         </div>
-                      ) : (
-                        <div className="nav-row-sub" style={{ color: "var(--amber-dim)", fontSize: 11, opacity: 0.45, animation: "pulse 5s infinite" }}>
-                          타지역 작업 중 · {NPC_LOCATION[npcName] ?? "미확인"}
-                        </div>
+                      </div>
+                      {!isHired && (
+                        <button
+                          onClick={() => hireVisitor(idx)}
+                          style={{ padding: "6px 14px", fontSize: 11, cursor: "pointer", background: "var(--amber-dim)", border: "none", color: "#000", fontWeight: 700, fontFamily: "inherit", flexShrink: 0 }}
+                        >
+                          고용하기
+                        </button>
                       )}
                     </div>
-                    <div className="nav-row-arrow">›</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              </>
-            ) : (
-              /* 슬롯 목록 */
-              <div className="nav-list">
-                <div className="nav-row" onClick={() => setPartyView(false)}>
-                  <div className="nav-row-info">
-                    <div className="nav-row-name">← 돌아가기</div>
-                  </div>
-                </div>
-                {/* 슬롯 1 — 해금됨 */}
-                <div className="nav-row nav-row--npc" onClick={() => setPartySlotSelect(true)}>
-                  {partySlot1 ? (
-                    <img
-                      className="nav-row-avatar"
-                      src={avatar}
-                      alt={partySlot1}
-                      title={partySlot1}
-                      style={{ cursor: "zoom-in" }}
-                      onClick={e => { e.stopPropagation(); setNpcDetailPopup(partySlot1); }}
-                    />
-                  ) : (
-                    <div className="nav-row-avatar" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 18 }}>+</div>
-                  )}
-                  <div className="nav-row-info">
-                    <div className="nav-row-name">슬롯 1</div>
-                    <div className="nav-row-sub" style={{ color: "var(--text-dim)" }}>
-                      {partySlot1 ?? "비어있음"}
-                    </div>
-                  </div>
-                  <div className="nav-row-arrow">›</div>
-                </div>
-                {/* 슬롯 2~10 — 잠김 */}
-                {Array.from({ length: 9 }, (_, i) => (
-                  <div key={i + 2} className="nav-row nav-row--locked" style={{ opacity: 0.4 }}>
-                    <div className="nav-row-info">
-                      <div className="nav-row-name">🔒 슬롯 {i + 2}</div>
-                      <div className="nav-row-sub" style={{ color: "var(--text-dim)" }}>해금 필요</div>
-                    </div>
-                  </div>
-                ))}
+            </div>
+
+            {/* ── 고용된 동행인 목록 ── */}
+            <div style={{ padding: "16px 14px 0" }}>
+              <div style={{ fontSize: 10, color: "var(--text-dim)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>
+                동행인 ({hiredCompanions.length})
               </div>
-            )}
+            </div>
+            <div className="nav-list" style={{ maxHeight: "260px", overflowY: "auto" }}>
+              <div className="nav-row" onClick={() => setPartyView(false)}>
+                <div className="nav-row-info">
+                  <div className="nav-row-name">← 돌아가기</div>
+                </div>
+              </div>
+              {hiredCompanions.length === 0 ? (
+                <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--text-dim)", opacity: 0.5 }}>
+                  고용된 동행인이 없습니다. 방문객을 고용해보세요.
+                </div>
+              ) : (
+                hiredCompanions.map(npcName => {
+                  const profile = NPC_PROFILES[npcName];
+                  return (
+                    <div
+                      key={npcName}
+                      className={`nav-row nav-row--npc${partySlot1 === npcName ? " nav-row--active" : ""}`}
+                      onClick={() => setNpcDetailPopup(npcName)}
+                    >
+                      <img className="nav-row-avatar" src={avatar} alt={npcName} />
+                      <div className="nav-row-info">
+                        <div className="nav-row-name">{npcName}</div>
+                        <div className="nav-row-sub" style={{ color: "var(--text-dim)", fontSize: 11 }}>
+                          {profile?.traits.slice(0, 2).join(" · ") ?? "동행 가능"}
+                        </div>
+                      </div>
+                      <div className="nav-row-arrow">›</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </>
         ) : null}
 
