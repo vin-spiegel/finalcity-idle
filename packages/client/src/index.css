@@ -205,7 +205,7 @@ body {
 
 .top-spacer { flex: 1; }
 
-.top-circle-tick { flex-shrink: 0; }
+.top-circle-tick { flex-shrink: 0; margin-left: 10px; }
 
 .top-action-status {
   display: flex;

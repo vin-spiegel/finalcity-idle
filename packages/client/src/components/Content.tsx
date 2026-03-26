@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import BasecampMap from "./BasecampMap";
 import { ChevronLeft } from "lucide-react";
 import avatar from "../assets/image.png";
 import mapPreview from "../assets/map-preview.png";
@@ -854,10 +855,65 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
   const [companionTarget,   setCompanionTarget]   = useState<1 | 2>(1);
   const [slot1Member,       setSlot1Member]       = useState<string | null>(null); // "__player__" | NPC이름 | null
   const [teamPopupLeaf,     setTeamPopupLeaf]     = useState<ZoneNode | null>(null);
+  const [savedTeam,         setSavedTeam]         = useState<{ slot1: string | null; slot2: string | null }>(() => {
+    try { return JSON.parse(localStorage.getItem("savedTeam") ?? "null") ?? { slot1: null, slot2: null }; } catch { return { slot1: null, slot2: null }; }
+  });
+  const [teamSaveToast,     setTeamSaveToast]     = useState(false);
+  const [exploringParty,    setExploringParty]    = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("exploringParty") ?? "[]"); } catch { return []; }
+  });
+  const [hoveredMember,     setHoveredMember]     = useState<string | null>(null);
+
+  // ── CACHE 루트 테이블 ──
+  const CACHE_LOOT_TABLE = [
+    // 광물 5종
+    { id: 'ore_iron_shard',   name: '철 파편',       type: 'material'  as const, grade: 'common'   as const, desc: '폐허에서 수거한 오래된 금속 조각.',           weight: 40 },
+    { id: 'ore_mana_dust',    name: '마나 분말',      type: 'material'  as const, grade: 'common'   as const, desc: '마나 결정이 분쇄된 미세 입자.',              weight: 35 },
+    { id: 'ore_void_stone',   name: '공허석',         type: 'material'  as const, grade: 'uncommon' as const, desc: '공허 구역에서 채취한 불안정한 광석.',         weight: 15 },
+    { id: 'ore_rune_ore',     name: '룬 광석',        type: 'material'  as const, grade: 'rare'     as const, desc: '고대 룬이 새겨진 희귀 광물.',                weight: 7  },
+    { id: 'ore_core_crystal', name: '핵심 결정',      type: 'material'  as const, grade: 'epic'     as const, desc: '마나 폭발의 중심부에서 생성된 순수 에너지 결정.', weight: 3  },
+    // 장비 3종
+    { id: 'eq_worn_blade',    name: '낡은 칼날',      type: 'equipment' as const, grade: 'common'   as const, desc: '날이 많이 무뎌졌지만 아직 쓸 만하다.',       weight: 20 },
+    { id: 'eq_scav_coat',     name: '폐허꾼 외투',    type: 'equipment' as const, grade: 'uncommon' as const, desc: '폐허 탐색에 최적화된 방호복.',               weight: 8  },
+    { id: 'eq_void_bracelet', name: '공허 유물 팔찌', type: 'equipment' as const, grade: 'rare'     as const, desc: '착용자에게 희미한 마나 공명이 느껴진다.',     weight: 4  },
+  ];
+
+  const rollCacheLoot = (): { id: string; name: string; type: 'material' | 'consumable' | 'equipment' | 'key_item'; grade: 'common' | 'uncommon' | 'rare' | 'epic'; desc: string; qty: number }[] => {
+    const totalWeight = CACHE_LOOT_TABLE.reduce((s, i) => s + i.weight, 0);
+    const count = Math.floor(Math.random() * 2) + 2; // 2~3개
+    const picked: typeof CACHE_LOOT_TABLE = [];
+    for (let t = 0; t < count; t++) {
+      let r = Math.random() * totalWeight;
+      for (const item of CACHE_LOOT_TABLE) {
+        r -= item.weight;
+        if (r <= 0) { picked.push(item); break; }
+      }
+    }
+    return picked.map(i => ({ ...i, qty: i.type === 'material' ? Math.floor(Math.random() * 3) + 1 : 1 }));
+  };
+
+  const [cacheRewardPopup, setCacheRewardPopup] = useState<{ id: string; name: string; type: 'material' | 'consumable' | 'equipment' | 'key_item'; grade: 'common' | 'uncommon' | 'rare' | 'epic'; desc: string; qty: number }[] | null>(null);
+  const [unlockSlotConfirm, setUnlockSlotConfirm] = useState<number | null>(null);
+  const [dismissCompanionConfirm, setDismissCompanionConfirm] = useState<string | null>(null);
+
+
+  const GRADE_COLOR: Record<string, string> = {
+    common: 'var(--text-dim)', uncommon: 'var(--cyan-dim)', rare: 'var(--amber-dim)', epic: '#c678dd',
+  };
+
+  // ── 보물상자 시스템 ──
+  const CHEST_INTERVAL = 60 * 60 * 1000; // 1시간
+  const [chestCount,   setChestCount]   = useState<number>(() => {
+    try { return Number(localStorage.getItem("chestCount") ?? "0"); } catch { return 0; }
+  });
+  const [chestNextAt,  setChestNextAt]  = useState<number>(() => {
+    try { return Number(localStorage.getItem("chestNextAt") ?? String(Date.now() + CHEST_INTERVAL)); } catch { return Date.now() + CHEST_INTERVAL; }
+  });
+  const [chestPulse,   setChestPulse]   = useState(false);
 
   // ── 방문객 시스템 ──
   const VISITOR_COOLDOWN = 5 * 60 * 60 * 1000; // 5시간
-  const VISITOR_SLOT_COUNT = 5;
+  const VISITOR_SLOT_COUNT = 4;
 
   type VisitorSlot = { visitor: string | null; nextVisitorAt: number; unlocked: boolean };
 
@@ -867,7 +923,14 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
   const [visitorSlots, setVisitorSlots] = useState<VisitorSlot[]>(() => {
     try {
       const saved = localStorage.getItem("visitorSlots");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: VisitorSlot[] = JSON.parse(saved);
+        // 슬롯 수가 부족하면 부족한 만큼 잠긴 슬롯 추가
+        while (parsed.length < VISITOR_SLOT_COUNT) {
+          parsed.push({ visitor: null, nextVisitorAt: Date.now() + VISITOR_COOLDOWN, unlocked: false });
+        }
+        return parsed;
+      }
     } catch {}
     return Array.from({ length: VISITOR_SLOT_COUNT }, (_, i) => ({
       visitor: null,
@@ -917,6 +980,33 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
     return () => clearInterval(id);
   }, []);
 
+  // 보물상자 타이머 — 탐험 중일 때만 카운트
+  const isExploringRef = useRef(state.isExploring);
+  isExploringRef.current = state.isExploring;
+  const chestNextAtRef = useRef(chestNextAt);
+  chestNextAtRef.current = chestNextAt;
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!isExploringRef.current) return;
+      const now = Date.now();
+      if (now >= chestNextAtRef.current) {
+        setChestCount(prev => {
+          const next = prev + 1;
+          localStorage.setItem("chestCount", String(next));
+          return next;
+        });
+        const nextAt = chestNextAtRef.current + CHEST_INTERVAL;
+        setChestNextAt(nextAt);
+        localStorage.setItem("chestNextAt", String(nextAt));
+        setChestPulse(true);
+        setTimeout(() => setChestPulse(false), 800);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+
   const fmtCountdown = (target: number) => {
     const diff = Math.max(0, target - tickNow);
     const h = Math.floor(diff / 3600000);
@@ -931,6 +1021,16 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
     const updated = [...hiredCompanions, visitor];
     setHiredCompanions(updated);
     localStorage.setItem("hiredCompanions", JSON.stringify(updated));
+  };
+
+  const VISITOR_SLOT_UNLOCK_COST = 500;
+  const unlockVisitorSlot = (slotIdx: number) => {
+    const currentBss = state.resources.bss ?? 0;
+    if (currentBss < VISITOR_SLOT_UNLOCK_COST) return;
+    dispatch({ type: 'SET_RESOURCES', resources: { ...state.resources, bss: currentBss - VISITOR_SLOT_UNLOCK_COST } });
+    const updated = visitorSlots.map((s, i) => i === slotIdx ? { ...s, unlocked: true } : s);
+    setVisitorSlots(updated);
+    localStorage.setItem("visitorSlots", JSON.stringify(updated));
   };
 
   const NPC_LOCATION: Record<string, string> = {
@@ -1207,6 +1307,7 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
 
   const viewKey = currentNode?.id ?? "world";
 
+
   // Breadcrumbs
   const crumbs = [
     { id: "__root__", label: "세계 지도" },
@@ -1271,10 +1372,104 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
         </div>
       </div>
 
+      {/* ── 슬롯 해금 확인 팝업 ── */}
+      {unlockSlotConfirm !== null && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}
+          onClick={() => setUnlockSlotConfirm(null)}
+        >
+          <div
+            style={{ width: "72%", maxWidth: 240, backgroundColor: "var(--panel-deep)", border: "1px solid var(--border)", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16, pointerEvents: "auto" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 13, color: "var(--text)", textAlign: "center" }}>슬롯 {unlockSlotConfirm + 1} 해금하시겠습니까?</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center" }}>💎 500</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { unlockVisitorSlot(unlockSlotConfirm); setUnlockSlotConfirm(null); }}
+                style={{ flex: 1, padding: "7px 0", fontSize: 12, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "inherit" }}
+              >Yes</button>
+              <button
+                onClick={() => setUnlockSlotConfirm(null)}
+                style={{ flex: 1, padding: "7px 0", fontSize: 12, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-dim)", fontFamily: "inherit" }}
+              >No</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 동행 해제 확인 팝업 ── */}
+      {dismissCompanionConfirm !== null && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}
+        >
+          <div
+            style={{ width: "72%", maxWidth: 240, backgroundColor: "var(--panel-deep)", border: "1px solid var(--border)", padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16, pointerEvents: "auto" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 13, color: "var(--text)", textAlign: "center" }}>동행을 해제하시겠습니까?</div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", textAlign: "center" }}>{dismissCompanionConfirm}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => {
+                  const updated = hiredCompanions.filter(c => c !== dismissCompanionConfirm);
+                  setHiredCompanions(updated);
+                  localStorage.setItem("hiredCompanions", JSON.stringify(updated));
+                  setDismissCompanionConfirm(null);
+                }}
+                style={{ flex: 1, padding: "7px 0", fontSize: 12, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "inherit" }}
+              >Yes</button>
+              <button
+                onClick={() => setDismissCompanionConfirm(null)}
+                style={{ flex: 1, padding: "7px 0", fontSize: 12, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-dim)", fontFamily: "inherit" }}
+              >No</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CACHE 수령 팝업 ── */}
+      {cacheRewardPopup && (
+        <div
+          style={{ position: "absolute", inset: 0, zIndex: 60, backgroundColor: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setCacheRewardPopup(null)}
+        >
+          <div
+            style={{ width: "80%", maxWidth: 300, backgroundColor: "var(--surface)", border: "1px solid var(--amber-dim)", borderRadius: 8, padding: "20px 18px" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 11, color: "var(--amber-dim)", letterSpacing: 2, marginBottom: 14, textTransform: "uppercase" }}>◈ Cache Opened</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+              {cacheRewardPopup.map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 36, height: 36, border: `1px solid ${GRADE_COLOR[item.grade]}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                    {item.type === 'equipment' ? '⚔' : '◆'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: GRADE_COLOR[item.grade] }}>{item.name}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>{item.desc}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0 }}>×{item.qty}</div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setCacheRewardPopup(null)}
+              style={{ width: "100%", padding: "8px 0", background: "transparent", border: "1px solid var(--amber-dim)", borderRadius: 4, color: "var(--amber-dim)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", letterSpacing: 1 }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 팀 구성 팝업 ── */}
       {teamPopupLeaf && (() => {
         const leaf = teamPopupLeaf;
         const doStart = async () => {
+          const party = [slot1Member, partySlot1].filter((s): s is string => !!s);
+          setExploringParty(party);
+          localStorage.setItem("exploringParty", JSON.stringify(party));
           setTeamPopupLeaf(null);
           setStarting(true);
           dispatch({ type: "CHANGE_ZONE", zoneId: leaf.id, tickSec: leaf.tickSec! });
@@ -1362,6 +1557,33 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                   </div>
                 ))}
 
+              </div>
+
+              {/* 동행 저장 / 불러오기 */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                <button
+                  onClick={() => {
+                    const team = { slot1: slot1Member, slot2: partySlot1 };
+                    setSavedTeam(team);
+                    localStorage.setItem("savedTeam", JSON.stringify(team));
+                    setTeamSaveToast(true);
+                    setTimeout(() => setTeamSaveToast(false), 1500);
+                  }}
+                  style={{ ...btnBase, flex: 1, background: "transparent", color: "var(--amber-dim)", borderColor: "var(--amber-dim)" }}
+                >
+                  {teamSaveToast ? "저장됨 ✓" : "동행 저장"}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!savedTeam.slot1 && !savedTeam.slot2) return;
+                    setSlot1Member(savedTeam.slot1);
+                    setPartySlot1(savedTeam.slot2);
+                  }}
+                  disabled={!savedTeam.slot1 && !savedTeam.slot2}
+                  style={{ ...btnBase, flex: 1, background: "transparent", color: savedTeam.slot1 || savedTeam.slot2 ? "var(--text-dim)" : "var(--text-dim)", opacity: savedTeam.slot1 || savedTeam.slot2 ? 1 : 0.35 }}
+                >
+                  동행 불러오기
+                </button>
               </div>
 
               {/* 하단 버튼 */}
@@ -1611,13 +1833,21 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {visitorSlots.map((slot, idx) => {
                   if (!slot.unlocked) {
+                    const canAfford = (state.resources.bss ?? 0) >= VISITOR_SLOT_UNLOCK_COST;
                     return (
-                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", opacity: 0.4, backgroundColor: "rgba(0,0,0,0.2)" }}>
-                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--text-dim)" }}>🔒</div>
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", backgroundColor: "rgba(0,0,0,0.2)" }}>
+                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "var(--text-dim)", opacity: 0.4 }}>🔒</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 600 }}>슬롯 {idx + 1}</div>
                           <div style={{ fontSize: 10, color: "var(--text-dim)" }}>해금 필요</div>
                         </div>
+                        <button
+                          onClick={() => canAfford && setUnlockSlotConfirm(idx)}
+                          disabled={!canAfford}
+                          style={{ padding: "6px 14px", fontSize: 11, cursor: canAfford ? "pointer" : "not-allowed", background: "transparent", border: `1px solid ${canAfford ? "var(--border)" : "var(--border)"}`, color: canAfford ? "var(--text-dim)" : "var(--text-dim)", fontWeight: 400, fontFamily: "inherit", flexShrink: 0, opacity: canAfford ? 0.7 : 0.3 }}
+                        >
+                          💎 {VISITOR_SLOT_UNLOCK_COST.toLocaleString()}
+                        </button>
                       </div>
                     );
                   }
@@ -1656,43 +1886,64 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
               </div>
             </div>
 
-            {/* ── 고용된 동행인 목록 ── */}
+            {/* ── 고용된 동행인 슬롯 ── */}
             <div style={{ padding: "16px 14px 0" }}>
               <div style={{ fontSize: 10, color: "var(--text-dim)", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>
-                동행인 ({hiredCompanions.length})
+                동행인 ({hiredCompanions.length} / 2)
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {Array.from({ length: 4 }, (_, idx) => {
+                  const isLocked = idx >= 2;
+                  const npcName = hiredCompanions[idx] ?? null;
+                  const profile = npcName ? NPC_PROFILES[npcName] : null;
+                  if (isLocked) {
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", opacity: 0.4, backgroundColor: "rgba(0,0,0,0.2)" }}>
+                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "var(--text-dim)" }}>🔒</div>
+                        <div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 600 }}>동행 슬롯 {idx + 1}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-dim)" }}>해금 필요</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (!npcName) {
+                    return (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", backgroundColor: "rgba(0,0,0,0.1)" }}>
+                        <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "var(--text-dim)", opacity: 0.4 }}>···</div>
+                        <div>
+                          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>동행 슬롯 {idx + 1} · 비어있음</div>
+                          <div style={{ fontSize: 10, color: "var(--text-dim)", opacity: 0.6, marginTop: 2 }}>방문객을 고용해보세요</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={idx}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border)", cursor: "pointer", backgroundColor: "rgba(0,0,0,0.1)" }}
+                      onClick={() => setNpcDetailPopup(npcName)}
+                    >
+                      <img src={avatar} alt={npcName} style={{ width: 44, height: 44, borderRadius: 4, border: "1px solid var(--border)" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{npcName}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-dim)" }}>{profile?.traits.slice(0, 2).join(" · ") ?? "동행 가능"}</div>
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); setDismissCompanionConfirm(npcName); }}
+                        style={{ padding: "6px 14px", fontSize: 11, cursor: "pointer", background: "transparent", border: "1px solid var(--border)", color: "var(--text-dim)", fontWeight: 400, fontFamily: "inherit", flexShrink: 0, opacity: 0.7 }}
+                      >해제</button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="nav-list" style={{ maxHeight: "260px", overflowY: "auto" }}>
+            <div className="nav-list" style={{ marginTop: 12 }}>
               <div className="nav-row" onClick={() => setPartyView(false)}>
                 <div className="nav-row-info">
                   <div className="nav-row-name">← 돌아가기</div>
                 </div>
               </div>
-              {hiredCompanions.length === 0 ? (
-                <div style={{ padding: "12px 14px", fontSize: 12, color: "var(--text-dim)", opacity: 0.5 }}>
-                  고용된 동행인이 없습니다. 방문객을 고용해보세요.
-                </div>
-              ) : (
-                hiredCompanions.map(npcName => {
-                  const profile = NPC_PROFILES[npcName];
-                  return (
-                    <div
-                      key={npcName}
-                      className={`nav-row nav-row--npc${partySlot1 === npcName ? " nav-row--active" : ""}`}
-                      onClick={() => setNpcDetailPopup(npcName)}
-                    >
-                      <img className="nav-row-avatar" src={avatar} alt={npcName} />
-                      <div className="nav-row-info">
-                        <div className="nav-row-name">{npcName}</div>
-                        <div className="nav-row-sub" style={{ color: "var(--text-dim)", fontSize: 11 }}>
-                          {profile?.traits.slice(0, 2).join(" · ") ?? "동행 가능"}
-                        </div>
-                      </div>
-                      <div className="nav-row-arrow">›</div>
-                    </div>
-                  );
-                })
-              )}
             </div>
           </>
         ) : null}
@@ -1759,8 +2010,14 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
           </div>
         ) : !partyView && !cycleHQView ? (
         <div className="map-preview-wrap" data-view={viewKey}>
-          <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
-          <div className="map-region-tint" />
+          {viewKey === "basecamp" ? (
+            <BasecampMap />
+          ) : (
+            <>
+              <img src={ZONE_IMAGES[viewKey] ?? mapPreview} alt="구역 지도" className="map-preview" />
+              <div className="map-region-tint" />
+            </>
+          )}
 
           <div className="map-hud-top">
             <div className="map-hud-title-row">
@@ -2123,6 +2380,16 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                       {locked && (
                         <span className="nav-skill-req"> (필요 {leaf.levelReq}.00)</span>
                       )}
+                      {(() => {
+                        const companions = exploringParty.filter(s => s !== "__player__");
+                        if (companions.length === 0) return null;
+                        const bonus = companions.length >= 2 ? (companions.length - 1) * 25 : 0;
+                        return (
+                          <span style={{ fontSize: 10, color: bonus > 0 ? "var(--amber-dim)" : "var(--text-dim)", marginLeft: 8 }}>
+                            {companions.length}명 · 자원 +{bonus}% 보너스
+                          </span>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -2132,6 +2399,7 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                     onClick={() => {
                       if (isActive || starting || locked) return;
                       setSlot1Member(null);
+                      setPartySlot1(null);
                       setTeamPopupLeaf(leaf);
                     }}
                   >
@@ -2157,21 +2425,112 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                       </div>
                     </div>
                     {isActive ? (
-                      <button
-                        className={`nav-row-cancel${stopping ? " nav-row-cancel--pending" : ""}`}
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (stopping) return;
-                          setStopping(true);
-                          dispatch({ type: "STOP_EXPLORE" });
-                          try { await api.stopExploration(); }
-                          catch { /* ok */ }
-                          finally { setStopping(false); }
-                        }}
-                      >
-                        {stopping ? "◌" : "✕"}
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* 탐험 파티 썸네일 */}
+                        {exploringParty.map((member, i) => {
+                          const label = member === "__player__" ? "나 (플레이어)" : member;
+                          return (
+                            <div
+                              key={i}
+                              style={{ position: "relative" }}
+                              onMouseEnter={() => setHoveredMember(member)}
+                              onMouseLeave={() => setHoveredMember(null)}
+                            >
+                              <img
+                                src={avatar}
+                                alt={label}
+                                style={{
+                                  width: 26, height: 26,
+                                  borderRadius: 4,
+                                  border: `1px solid ${member === "__player__" ? "var(--cyan-dim)" : "var(--amber-dim)"}`,
+                                  opacity: 0.85,
+                                  display: "block",
+                                }}
+                              />
+                              {hoveredMember === member && (
+                                <div style={{
+                                  position: "absolute", bottom: "calc(100% + 5px)", left: "50%",
+                                  transform: "translateX(-50%)",
+                                  background: "var(--surface)", border: "1px solid var(--border)",
+                                  borderRadius: 4, padding: "3px 8px",
+                                  fontSize: 10, color: "var(--text-dim)",
+                                  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 99,
+                                  letterSpacing: "0.03em",
+                                }}>
+                                  {label}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {/* 전리품 캐시 */}
+                        <button
+                          title={chestCount > 0 ? `전리품 ${chestCount}캐시 수령 가능` : `다음 캐시까지 · ${fmtCountdown(chestNextAt)}`}
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (chestCount <= 0) return;
+                            const loot: { id: string; name: string; type: 'material' | 'consumable' | 'equipment' | 'key_item'; grade: 'common' | 'uncommon' | 'rare' | 'epic'; desc: string; qty: number }[] = [];
+                            for (let c = 0; c < chestCount; c++) loot.push(...rollCacheLoot());
+                            // 같은 아이템 합산
+                            const merged = loot.reduce<typeof loot>((acc, item) => {
+                              const ex = acc.find(i => i.id === item.id);
+                              if (ex) { ex.qty += item.qty; } else { acc.push({ ...item }); }
+                              return acc;
+                            }, []);
+                            dispatch({ type: 'ADD_ITEMS', items: merged });
+                            setCacheRewardPopup(merged);
+                            setChestCount(0);
+                            localStorage.setItem("chestCount", "0");
+                          }}
+                          style={{
+                            background: chestCount > 0 ? "rgba(181,137,0,0.08)" : "transparent",
+                            border: `1px solid ${chestCount > 0 ? "var(--amber-dim)" : "var(--border)"}`,
+                            borderRadius: 4,
+                            height: 26,
+                            padding: "0 8px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            cursor: chestCount > 0 ? "pointer" : "default",
+                            fontFamily: "inherit",
+                            fontSize: 10,
+                            color: chestCount > 0 ? "var(--amber-dim)" : "var(--text-dim)",
+                            letterSpacing: "0.04em",
+                            opacity: chestCount > 0 ? 1 : 0.45,
+                            transition: "all 0.3s",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <span style={{ fontSize: 11 }}>◈</span>
+                          <span>CACHE</span>
+                          {chestCount > 0 && (
+                            <span style={{
+                              background: "var(--amber-dim)", color: "#000",
+                              fontSize: 9, fontWeight: 700,
+                              borderRadius: 2, padding: "0 4px", lineHeight: "14px",
+                            }}>
+                              {chestCount}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          className={`nav-row-cancel${stopping ? " nav-row-cancel--pending" : ""}`}
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (stopping) return;
+                            setStopping(true);
+                            dispatch({ type: "STOP_EXPLORE" });
+                            setExploringParty([]);
+                            localStorage.setItem("exploringParty", "[]");
+                            try { await api.stopExploration(); }
+                            catch { /* ok */ }
+                            finally { setStopping(false); }
+                          }}
+                        >
+                          {stopping ? "◌" : "✕"}
+                        </button>
+                      </div>
                     ) : (
                       <div className="nav-row-arrow">{locked ? "🔒" : "▶"}</div>
                     )}
@@ -2231,6 +2590,9 @@ export default function Content({ partySlot1, setPartySlot1 }: { partySlot1: str
                 <div className="nav-row-info">
                   <div className="nav-row-name">동행</div>
                 </div>
+                {visitorSlots.some(s => s.unlocked && s.visitor && !hiredCompanions.includes(s.visitor)) && (
+                  <span style={{ fontSize: 11, color: "var(--amber)", fontWeight: 700, marginRight: 6 }}>!</span>
+                )}
                 <div className="nav-row-arrow">›</div>
               </div>
               <div className="nav-row" onClick={() => setCycleHQView(true)}>

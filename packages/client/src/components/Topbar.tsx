@@ -2,7 +2,7 @@ import { Bell, MessageSquare, Twitter, Volume2, VolumeX } from 'lucide-react';
 import avatar from '../assets/image.png';
 import type { SidebarTab } from '../App';
 import { useGame, CIRCLE_CIRCUMFERENCE } from '../context/GameContext';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react'; // useState: volOpen용
 
 const NOTIF_COUNT = 3;
 
@@ -12,14 +12,16 @@ type Props = {
   onTabClick: (tab: SidebarTab) => void;
   partySlot1: string | null;
   onNavigateToActive: () => void;
+  volume: number;
+  muted: boolean;
+  setVolume: (v: number) => void;
+  setMuted: (m: boolean | ((prev: boolean) => boolean)) => void;
 };
 
-export default function Topbar({ sidebarOpen, activeTab, onTabClick, partySlot1, onNavigateToActive }: Props) {
+export default function Topbar({ sidebarOpen, activeTab, onTabClick, partySlot1, onNavigateToActive, volume, muted, setVolume, setMuted }: Props) {
   const { state, circleTickRef, zones, navigateToActiveRef } = useGame();
   const { character, resources, currentAction, isExploring } = state;
 
-  const [volume, setVolume] = useState(80);
-  const [muted, setMuted] = useState(false);
   const [volOpen, setVolOpen] = useState(false);
   const volRef = useRef<HTMLDivElement>(null);
 
