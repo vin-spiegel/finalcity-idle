@@ -82,7 +82,8 @@ export type GameAction =
   | { type: 'SERVER_SYNC';   progress: number; resources: Record<string, number>; jobType: string | null; jobPointsGained: number; nextTickIn: number; tickSec: number }
   | { type: 'SET_RESOURCES'; resources: Record<string, number> }
   | { type: 'SWITCH_JOB';    jobType: string }
-  | { type: 'STOP_EXPLORE' };
+  | { type: 'STOP_EXPLORE' }
+  | { type: 'ADD_ITEMS'; items: Item[] };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
@@ -127,6 +128,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, activeJob: action.jobType };
     case 'STOP_EXPLORE':
       return { ...state, isExploring: false };
+    case 'ADD_ITEMS': {
+      const inv = [...state.inventory];
+      for (const newItem of action.items) {
+        const existing = inv.find(i => i.id === newItem.id);
+        if (existing) { existing.qty += newItem.qty; }
+        else { inv.push({ ...newItem }); }
+      }
+      return { ...state, inventory: inv };
+    }
     default:
       return state;
   }

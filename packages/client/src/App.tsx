@@ -185,14 +185,24 @@ function AppLayout() {
     return () => clearTimeout(t);
   }, [logToast]);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [volume, setVolume] = useState(80);
+  const [muted,  setMuted]  = useState(false);
+
   useEffect(() => {
     const audio = new Audio(bgm);
     audio.loop = true;
-    audio.volume = 0.4;
+    audio.volume = volume / 100;
+    audioRef.current = audio;
     const play = () => { audio.play().catch(() => {}); };
     document.addEventListener('click', play, { once: true });
     return () => { document.removeEventListener('click', play); audio.pause(); };
   }, []);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = muted ? 0 : volume / 100;
+  }, [volume, muted]);
 
   const [rightW,      setRightW]      = useState(SIDEBAR_RIGHT_DEFAULT);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -267,6 +277,10 @@ function AppLayout() {
             onTabClick={handleTabClick}
             partySlot1={partySlot1}
             onNavigateToActive={() => setTabbarTab('map')}
+            volume={volume}
+            muted={muted}
+            setVolume={setVolume}
+            setMuted={setMuted}
           />
           <div className="main">
             {logToast && (
